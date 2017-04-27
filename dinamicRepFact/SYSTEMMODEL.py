@@ -1,0 +1,365 @@
+#!/usr/bin/env python2
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Feb 16 10:56:02 2017
+
+@author: carlos
+"""
+import copy
+import random as random
+import math as math
+
+class SYSTEMMODEL:
+    
+    def __init__(self):
+        
+        self.nodenumber = 0
+        self.racknumber = 0 #el nodenumber ha de ser divisible por este numero
+        self.nodesXrack = 0
+        
+        self.rnd = random.Random()
+        self.rnd.seed(100)
+        
+    def normalizeConfiguration(self):
+        for i,v in enumerate(self.serviceTupla):
+            self.serviceTupla[i]['scaleLevel']= int(math.ceil((self.serviceTupla[i]['computationalResources']*self.serviceTupla[i]['requestNumber']*self.requestPerApp[self.serviceTupla[i]['application']])/self.serviceTupla[i]['threshold']))
+            self.serviceTupla[i]['containerUsage']= self.serviceTupla[i]['computationalResources']/self.serviceTupla[i]['scaleLevel'] 
+
+
+
+
+#################
+#
+#
+#
+#
+#    CONFIGURACION A
+#
+#
+#
+#
+################
+        
+    def configurationA(self,nodes):
+
+        self.nodenumber = nodes
+        self.racknumber = 5 #el nodenumber ha de ser divisible por este numero
+        self.nodesXrack = self.nodenumber / self.racknumber
+        
+
+#******************************************************************************************
+#   Definición de la red del CPD
+#******************************************************************************************
+
+
+
+        self.cpdNetwork = [[0 for x in range(self.racknumber)] for y in range(self.racknumber)]
+        
+        for r in range(self.racknumber):
+            for s in range(self.racknumber):
+                self.cpdNetwork[r][s]=12.0
+                self.cpdNetwork[s][r]=12.0
+            self.cpdNetwork[r][r]=5.0                  
+                            
+
+#******************************************************************************************
+#   END Definición de la red del CPD
+#******************************************************************************************
+
+  
+#******************************************************************************************
+#   Definición de los recursos de los nodos, y de la distribución de los nodos en armarios
+#******************************************************************************************
+
+        #definimos las "plantillas" de máquinas
+        self.plantillasMaquinas = []
+        self.plantillasMaquinas.append({"name": "tinny", "cpuload" : 1.0, "memorysize": 4.0, "memoryload": 1.0, "hdsize": 12.0, "hdload": 1.0, "failrate": 0.01})
+        self.plantillasMaquinas.append({"name": "small", "cpuload" : 2.0, "memorysize": 8.0, "memoryload": 1.0, "hdsize": 12.0, "hdload": 1.0, "failrate": 0.01})
+        self.plantillasMaquinas.append({"name": "big", "cpuload" : 8.0, "memorysize": 32.0, "memoryload": 1.0, "hdsize": 12.0, "hdload": 1.0, "failrate": 0.01})
+        
+        #asignamos un tipo/plantilla de máquina a cada uno de los nodos del sistema
+        self.nodeFeatures = []
+        for n in range(self.nodenumber):
+            self.nodeFeatures.append(self.plantillasMaquinas[self.rnd.randint(0,len(self.plantillasMaquinas)-1)])
+        
+
+        self.rackFeatures = []
+        for r in range (self.racknumber):
+            self.rackFeatures.append({"failrate": 0.03}) 
+            
+        #distribuimos los nodos en los armarios de forma uniforme
+
+        #consideraremos que las máquinas están distribuidas secuencialmente sobre los racks, es decir, el primer rack tiene
+        #desde la máquina 0 hasta la nodeXrack - 1, en el segundo desde la nodeXrack hasta la 2*nodeXrack - 1... y asi...
+        
+#        self.rackNodes = []
+#        nonAssignedNodes = set(range(self.nodenumber))
+#        for r in range(self.racknumber):
+#            self.rackNodes.append(set(random.sample(nonAssignedNodes, min(self.nodenumber / self.racknumber, len(nonAssignedNodes)))))
+#            nonAssignedNodes -= self.rackNodes[r]
+#        for r in range(self.racknumber):
+#            if len(nonAssignedNodes)!=0:
+#                self.rackNodes[r] |= set(random.sample(nonAssignedNodes, 1))
+#                nonAssignedNodes -= self.rackNodes[r]
+        
+
+#******************************************************************************************
+#   END Definición de los recursos de los nodos
+#******************************************************************************************
+      
+        
+        
+#******************************************************************************************
+#   Definición de los ficheros, bloques y procesos MapReduce de nuestro experimento
+#******************************************************************************************
+
+        
+        #Para cada uno de los jobs MR que tengamos MRJobId, hemos de indicar el fichero sobre el que se van a ejecutar fileId. Y para cada
+        #fichero sobre el que un MR se ejecute , debemos de indicar el identificador del fichero en el que se escribirn
+        #los resultados parciales del task map "temp" y los resultados finales del task reduce "output"
+        self.MapReduceFiles = {}
+        MRJobId=0
+        fileId=0
+        self.MapReduceFiles[MRJobId,fileId] = {"temp": 1 ,"output": 2}
+        fileId=3
+        self.MapReduceFiles[MRJobId,fileId] = {"temp": 4 ,"output": 5}
+        MRJobId=1
+        fileId=0
+        self.MapReduceFiles[MRJobId,fileId] = {"temp": 6 ,"output": 7}
+
+
+
+        ####
+        # probability es la probabilidad de que este proceso se encuentre en el sistema, o el %/100 del tiempo que está usando recursos
+        # networkload es la carga que se genera sobre la red cuando un proceso map ejecutado sobre un bloque de lectura rnode tiene que escribir su resultado en un UNICO bloque del fichero temporal que genera
+        #             de la misma forma que es igual a la carga que genera un proceso reduce ejecutadosobre un bloque rnode y tiene que escribir el output en un UNICO bloque del fichero output final que genera
+
+        self.MRusage= []
+        MRJobId=0
+        self.MRusage.append({"cpuload" : 0.01, "memorysize": 0.2, "memoryload": 0.04, "hdloadread": 0.08, "hdloadwrite": 0.08, "networkload": 1.0, "probability": 0.01})
+        MRJobId=1
+        self.MRusage.append({"cpuload" : 0.01, "memorysize": 0.2, "memoryload": 0.04, "hdloadread": 0.08, "hdloadwrite": 0.08, "networkload": 1.0, "probability": 0.01})
+        
+
+        #Para cada fichero que hemos definido anteriormente \all fileid + \all temp + \all output, hemos de indicar el tamaño
+        # de cada uno de ellos self.blocksPerFile. El tamaño viene dado por el número de bloques que ocupará. Y el índice del list corresponde al id del fichero
+        self.blocksPerFile = []
+        self.blocksPerFile = [4,2,1,5,4,0,1,1]
+        
+#******************************************************************************************
+#   END Definición de los ficheros, bloques y procesos MapReduce de nuestro experimento
+#******************************************************************************************
+
+
+        #Las variables siguientes no las tiene que definir el suario, las creamos para facilitar los cálculos, pero se crean a partir de las variables anteriormente definidas
+        self.tempFiles = set()
+        self.outputFiles = set()
+        
+        self.MRjobsPerInputFile = {} #a dictionary indexed by file id with the mapreduces that access to that fileid
+        self.InputFilesPerMRJob = {} # indexed by mr id with the files that this MR accesses
+        self.MRjobsPerOutTempFile = {}
+        
+        for mrKey,fileKey in self.MapReduceFiles:
+            try:
+                self.MRjobsPerInputFile[fileKey].append(mrKey)
+            except KeyError:
+                self.MRjobsPerInputFile[fileKey] = [mrKey]
+            try:
+                self.InputFilesPerMRJob[mrKey].append(fileKey)
+            except KeyError:
+                self.InputFilesPerMRJob[mrKey] = [fileKey]
+            self.tempFiles.add(self.MapReduceFiles[(mrKey,fileKey)]['temp'])
+            self.outputFiles.add(self.MapReduceFiles[(mrKey,fileKey)]['output'])
+            self.MRjobsPerOutTempFile[self.MapReduceFiles[(mrKey,fileKey)]['temp']] = mrKey
+            self.MRjobsPerOutTempFile[self.MapReduceFiles[(mrKey,fileKey)]['output']] = mrKey
+                                                          
+        
+
+#################
+#
+#
+#
+#
+#    CONFIGURACION B
+#
+#
+#
+#
+################
+        
+    def configurationB(self,nodes):
+
+        self.nodenumber = 200
+        self.racknumber = 20 #el nodenumber ha de ser divisible por este numero
+        self.nodesXrack = self.nodenumber / self.racknumber
+        
+
+#******************************************************************************************
+#   Definición de la red del CPD
+#******************************************************************************************
+
+
+
+        self.cpdNetwork = [[0 for x in range(self.racknumber)] for y in range(self.racknumber)]
+        
+        for r in range(self.racknumber):
+            for s in range(self.racknumber):
+                self.cpdNetwork[r][s]=12.0
+                self.cpdNetwork[s][r]=12.0
+            self.cpdNetwork[r][r]=5.0                  
+                            
+
+#******************************************************************************************
+#   END Definición de la red del CPD
+#******************************************************************************************
+
+  
+#******************************************************************************************
+#   Definición de los recursos de los nodos, y de la distribución de los nodos en armarios
+#******************************************************************************************
+
+        #definimos las "plantillas" de máquinas
+        self.plantillasMaquinas = []
+        self.plantillasMaquinas.append({"name": "tinny", "cpuload" : 1.0, "memorysize": 4.0, "memoryload": 1.0, "hdsize": 100.0, "hdload": 1.0, "failrate": 0.001})
+        self.plantillasMaquinas.append({"name": "small", "cpuload" : 2.0, "memorysize": 8.0, "memoryload": 1.0, "hdsize": 250.0, "hdload": 1.0, "failrate": 0.005})
+        self.plantillasMaquinas.append({"name": "big", "cpuload" : 8.0, "memorysize": 32.0, "memoryload": 1.0, "hdsize": 500.0, "hdload": 1.0, "failrate": 0.015})
+        
+        #asignamos un tipo/plantilla de máquina a cada uno de los nodos del sistema
+        self.nodeFeatures = []
+    
+        #Los 5 primeros racks tienen máquinas del tipo tinny
+        for n in range(0,50):
+            self.nodeFeatures.append(self.plantillasMaquinas[0])
+        #Los siguientes 5  racks tienen máquinas del tipo small
+        for n in range(50,100):
+            self.nodeFeatures.append(self.plantillasMaquinas[1])            
+            
+        #Los siguientes 5  racks tienen máquinas del tipo big
+        for n in range(100,150):
+            self.nodeFeatures.append(self.plantillasMaquinas[2])    
+        #Los últimos 5 racks tienen máquinas mezcladas.
+        tipomaquina=0
+        for n in range(150,200):
+            self.nodeFeatures.append(self.plantillasMaquinas[tipomaquina])
+            tipomaquina = (tipomaquina+1)%3
+
+        self.rackFeatures = []
+        for r in range (self.racknumber):
+            self.rackFeatures.append({"failrate": 0.03}) 
+            
+        #distribuimos los nodos en los armarios de forma uniforme
+
+        #consideraremos que las máquinas están distribuidas secuencialmente sobre los racks, es decir, el primer rack tiene
+        #desde la máquina 0 hasta la nodeXrack - 1, en el segundo desde la nodeXrack hasta la 2*nodeXrack - 1... y asi...
+        
+#      
+
+#******************************************************************************************
+#   END Definición de los recursos de los nodos
+#******************************************************************************************
+      
+        
+        
+#******************************************************************************************
+#   Definición de los ficheros, bloques y procesos MapReduce de nuestro experimento
+#******************************************************************************************
+
+
+
+        ####
+        # probability es la probabilidad de que este proceso se encuentre en el sistema, o el %/100 del tiempo que está usando recursos
+        # networkload es la carga que se genera sobre la red cuando un proceso map ejecutado sobre un bloque de lectura rnode tiene que escribir su resultado en un UNICO bloque del fichero temporal que genera
+        #             de la misma forma que es igual a la carga que genera un proceso reduce ejecutadosobre un bloque rnode y tiene que escribir el output en un UNICO bloque del fichero output final que genera
+
+        
+        num_mr=50
+        self.MRusage= []        
+        
+        for mri in range(num_mr):
+
+            MRJobId=mri
+            cpu = self.rnd.random()/10
+            prob = self.rnd.random()/num_mr
+            self.MRusage.append({"cpuload" : cpu, "memorysize": 0.0, "memoryload": 0.0, "hdloadread": 0.0, "hdloadwrite": 0.0, "networkload": 1.0, "probability": prob})
+        
+
+
+
+        
+        #Para cada uno de los jobs MR que tengamos MRJobId, hemos de indicar el fichero sobre el que se van a ejecutar fileId. Y para cada
+        #fichero sobre el que un MR se ejecute , debemos de indicar el identificador del fichero en el que se escribirn
+        #los resultados parciales del task map "temp" y los resultados finales del task reduce "output"
+        
+        
+        
+        self.MapReduceFiles = {}
+        self.blocksPerFile = []
+
+        num_files=100
+        
+        #asigno al menos un map reduce a cada fichero
+        for fi in range(num_files):
+            MRJobId=self.rnd.randint(0,len(self.MRusage)-1)
+            fileId=fi*3
+            inputSize = self.rnd.randint(1,200)
+            tmpSize = self.rnd.randint(1,200)
+            outputSize = self.rnd.randint(1,200)
+            self.MapReduceFiles[MRJobId,fileId] = {"temp": fileId+1 ,"output": fileId+2}
+            self.blocksPerFile.append(inputSize)
+            self.blocksPerFile.append(tmpSize)
+            self.blocksPerFile.append(outputSize)
+
+        #añado un % tantoadicional de relaciones mr-file adicionales de forma totalmente aleatorio
+        tantoAdicional = 0.3
+        currentFileId = 3 * num_files
+        moreRelationships = int(math.ceil(num_files * tantoAdicional))
+        for fi in range(moreRelationships):
+            fileId=self.rnd.randint(0,num_files-1)*3
+            MRJobId=self.rnd.randint(0,len(self.MRusage)-1)
+            while (MRJobId,fileId) in self.MapReduceFiles:
+                MRJobId=self.rnd.randint(0,len(self.MRusage)-1)
+            self.MapReduceFiles[MRJobId,fileId] = {"temp": currentFileId ,"output": currentFileId+1}  
+            tmpSize = self.rnd.randint(1,200)
+            outputSize = self.rnd.randint(1,200)
+            self.blocksPerFile.append(tmpSize)
+            self.blocksPerFile.append(outputSize)
+            currentFileId = currentFileId + 2      
+
+
+        #Para cada fichero que hemos definido anteriormente \all fileid + \all temp + \all output, hemos de indicar el tamaño
+        # de cada uno de ellos self.blocksPerFile. El tamaño viene dado por el número de bloques que ocupará. Y el índice del list corresponde al id del fichero
+
+        
+#******************************************************************************************
+#   END Definición de los ficheros, bloques y procesos MapReduce de nuestro experimento
+#******************************************************************************************
+
+
+        #Las variables siguientes no las tiene que definir el suario, las creamos para facilitar los cálculos, pero se crean a partir de las variables anteriormente definidas
+        self.tempFiles = set()
+        self.outputFiles = set()
+        
+        self.MRjobsPerInputFile = {} #a dictionary indexed by file id with the mapreduces that access to that fileid
+        self.InputFilesPerMRJob = {} # indexed by mr id with the files that this MR accesses
+        self.MRjobsPerOutTempFile = {}
+        
+        for mrKey,fileKey in self.MapReduceFiles:
+            try:
+                self.MRjobsPerInputFile[fileKey].append(mrKey)
+            except KeyError:
+                self.MRjobsPerInputFile[fileKey] = [mrKey]
+            try:
+                self.InputFilesPerMRJob[mrKey].append(fileKey)
+            except KeyError:
+                self.InputFilesPerMRJob[mrKey] = [fileKey]
+            self.tempFiles.add(self.MapReduceFiles[(mrKey,fileKey)]['temp'])
+            self.outputFiles.add(self.MapReduceFiles[(mrKey,fileKey)]['output'])
+            self.MRjobsPerOutTempFile[self.MapReduceFiles[(mrKey,fileKey)]['temp']] = mrKey
+            self.MRjobsPerOutTempFile[self.MapReduceFiles[(mrKey,fileKey)]['output']] = mrKey
+ 
+                                                          
+                                                          
+                                                          
+                                                          
+                                                          
+                                                          
