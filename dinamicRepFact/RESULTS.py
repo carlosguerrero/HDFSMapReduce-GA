@@ -175,7 +175,6 @@ class RESULTS:
             self.network['sfit'].append(seqnet[smallerFitIndex])      
      
             
-     ######EL FITNESS NO SE CALCULA DE FORMA CORRECTA
 
         
         
