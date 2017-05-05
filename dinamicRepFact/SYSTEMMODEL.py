@@ -20,10 +20,10 @@ class SYSTEMMODEL:
         self.rnd = random.Random()
         self.rnd.seed(100)
         
-    def normalizeConfiguration(self):
-        for i,v in enumerate(self.serviceTupla):
-            self.serviceTupla[i]['scaleLevel']= int(math.ceil((self.serviceTupla[i]['computationalResources']*self.serviceTupla[i]['requestNumber']*self.requestPerApp[self.serviceTupla[i]['application']])/self.serviceTupla[i]['threshold']))
-            self.serviceTupla[i]['containerUsage']= self.serviceTupla[i]['computationalResources']/self.serviceTupla[i]['scaleLevel'] 
+#    def normalizeConfiguration(self):
+#        for i,v in enumerate(self.serviceTupla):
+#            self.serviceTupla[i]['scaleLevel']= int(math.ceil((self.serviceTupla[i]['computationalResources']*self.serviceTupla[i]['requestNumber']*self.requestPerApp[self.serviceTupla[i]['application']])/self.serviceTupla[i]['threshold']))
+#            self.serviceTupla[i]['containerUsage']= self.serviceTupla[i]['computationalResources']/self.serviceTupla[i]['scaleLevel'] 
 
 
 
@@ -117,15 +117,23 @@ class SYSTEMMODEL:
         #Para cada uno de los jobs MR que tengamos MRJobId, hemos de indicar el fichero sobre el que se van a ejecutar fileId. Y para cada
         #fichero sobre el que un MR se ejecute , debemos de indicar el identificador del fichero en el que se escribirn
         #los resultados parciales del task map "temp" y los resultados finales del task reduce "output"
+        self.MagicFiles = {}
+        
         self.MapReduceFiles = {}
         MRJobId=0
         fileId=0
         self.MapReduceFiles[MRJobId,fileId] = {"temp": 1 ,"output": 2}
+        self.MagicFiles[0,1,2]={"readInput": [], "writeTemp": [], "readTemp": [], "writeOutput":[], "mr":0 }
+            
         fileId=3
         self.MapReduceFiles[MRJobId,fileId] = {"temp": 4 ,"output": 5}
+        self.MagicFiles[3,4,5]={"readInput": [], "writeTemp": [], "readTemp": [], "writeOutput":[], "mr":0  }
+        
         MRJobId=1
         fileId=0
         self.MapReduceFiles[MRJobId,fileId] = {"temp": 6 ,"output": 7}
+        self.MagicFiles[0,6,7]={"readInput": [], "writeTemp": [], "readTemp": [], "writeOutput":[], "mr":1 }
+        
 
 
 
@@ -152,6 +160,19 @@ class SYSTEMMODEL:
 
 
         #Las variables siguientes no las tiene que definir el suario, las creamos para facilitar los cálculos, pero se crean a partir de las variables anteriormente definidas
+
+
+        self.FilesPerTempFiles = {}
+        self.FilesPerOutputFiles = {}
+
+
+        for key in self.MapReduceFiles:
+            fitem = self.MapReduceFiles[key]
+            self.FilesPerTempFiles[fitem['temp']] = {"input" : key[1], "output": fitem['output']}
+            self.FilesPerOutputFiles[fitem['output']] = {"input" : key[1], "temp": fitem['temp']}
+
+
+
         self.tempFiles = set()
         self.outputFiles = set()
         
@@ -188,9 +209,21 @@ class SYSTEMMODEL:
 ################
         
     def configurationB(self,nodes):
+        
+        nodenumber=100
+        racknumber=10
+        num_mr=25
+        num_files=50
+        inputFileSize = 100
+        tempFileSize = 100
+        outputFileSize = 100
+        tantoAdicional = 0.15
+        
+        
+        
 
-        self.nodenumber = 200
-        self.racknumber = 20 #el nodenumber ha de ser divisible por este numero
+        self.nodenumber = nodenumber
+        self.racknumber = racknumber #el nodenumber ha de ser divisible por este numero
         self.nodesXrack = self.nodenumber / self.racknumber
         
 
@@ -220,9 +253,12 @@ class SYSTEMMODEL:
 
         #definimos las "plantillas" de máquinas
         self.plantillasMaquinas = []
-        self.plantillasMaquinas.append({"name": "tinny", "cpuload" : 1.0, "memorysize": 4.0, "memoryload": 1.0, "hdsize": 100.0, "hdload": 1.0, "failrate": 0.001})
-        self.plantillasMaquinas.append({"name": "small", "cpuload" : 2.0, "memorysize": 8.0, "memoryload": 1.0, "hdsize": 250.0, "hdload": 1.0, "failrate": 0.005})
-        self.plantillasMaquinas.append({"name": "big", "cpuload" : 8.0, "memorysize": 32.0, "memoryload": 1.0, "hdsize": 500.0, "hdload": 1.0, "failrate": 0.015})
+#ReduceResourceElements        self.plantillasMaquinas.append({"name": "tinny", "cpuload" : 1.0, "memorysize": 4.0, "memoryload": 1.0, "hdsize": 1600.0, "hdload": 1.0, "failrate": 0.001})
+#ReduceResourceElements        self.plantillasMaquinas.append({"name": "small", "cpuload" : 2.0, "memorysize": 8.0, "memoryload": 1.0, "hdsize": 4000.0, "hdload": 1.0, "failrate": 0.005})
+#ReduceResourceElements        self.plantillasMaquinas.append({"name": "big", "cpuload" : 8.0, "memorysize": 32.0, "memoryload": 1.0, "hdsize": 8000.0, "hdload": 1.0, "failrate": 0.015})
+        self.plantillasMaquinas.append({"name": "tinny", "cpuload" : 1.0, "hdsize": 1600.0, "failrate": 0.001})
+        self.plantillasMaquinas.append({"name": "small", "cpuload" : 2.0, "hdsize": 4000.0, "failrate": 0.005})
+        self.plantillasMaquinas.append({"name": "big", "cpuload" : 8.0, "hdsize": 8000.0, "failrate": 0.015})
         
         #asignamos un tipo/plantilla de máquina a cada uno de los nodos del sistema
         self.nodeFeatures = []
@@ -272,7 +308,7 @@ class SYSTEMMODEL:
         #             de la misma forma que es igual a la carga que genera un proceso reduce ejecutadosobre un bloque rnode y tiene que escribir el output en un UNICO bloque del fichero output final que genera
 
         
-        num_mr=50
+        
         self.MRusage= []        
         
         for mri in range(num_mr):
@@ -280,7 +316,8 @@ class SYSTEMMODEL:
             MRJobId=mri
             cpu = self.rnd.random()/10
             prob = self.rnd.random()/num_mr
-            self.MRusage.append({"cpuload" : cpu, "memorysize": 0.0, "memoryload": 0.0, "hdloadread": 0.0, "hdloadwrite": 0.0, "networkload": 1.0, "probability": prob})
+#ReduceResourceElements            self.MRusage.append({"cpuload" : cpu, "memorysize": 0.0, "memoryload": 0.0, "hdloadread": 0.0, "hdloadwrite": 0.0, "networkload": 1.0, "probability": prob})
+            self.MRusage.append({"cpuload" : cpu, "networkload": 1.0, "probability": prob})
         
 
 
@@ -294,23 +331,24 @@ class SYSTEMMODEL:
         
         self.MapReduceFiles = {}
         self.blocksPerFile = []
-
-        num_files=100
+        self.MagicFiles = {}
+        
         
         #asigno al menos un map reduce a cada fichero
         for fi in range(num_files):
             MRJobId=self.rnd.randint(0,len(self.MRusage)-1)
             fileId=fi*3
-            inputSize = self.rnd.randint(1,200)
-            tmpSize = self.rnd.randint(1,200)
-            outputSize = self.rnd.randint(1,200)
+            inputSize = self.rnd.randint(1,inputFileSize)
+            tmpSize = self.rnd.randint(1,tempFileSize)
+            outputSize = self.rnd.randint(1,outputFileSize)
             self.MapReduceFiles[MRJobId,fileId] = {"temp": fileId+1 ,"output": fileId+2}
+            self.MagicFiles[fileId,fileId+1,fileId+2]={"readInput": [], "writeTemp": [], "readTemp": [], "writeOutput":[], "mr":MRJobId }
             self.blocksPerFile.append(inputSize)
             self.blocksPerFile.append(tmpSize)
             self.blocksPerFile.append(outputSize)
 
         #añado un % tantoadicional de relaciones mr-file adicionales de forma totalmente aleatorio
-        tantoAdicional = 0.3
+        
         currentFileId = 3 * num_files
         moreRelationships = int(math.ceil(num_files * tantoAdicional))
         for fi in range(moreRelationships):
@@ -319,6 +357,7 @@ class SYSTEMMODEL:
             while (MRJobId,fileId) in self.MapReduceFiles:
                 MRJobId=self.rnd.randint(0,len(self.MRusage)-1)
             self.MapReduceFiles[MRJobId,fileId] = {"temp": currentFileId ,"output": currentFileId+1}  
+            self.MagicFiles[fileId,currentFileId,currentFileId+1]={"readInput": [], "writeTemp": [], "readTemp": [], "writeOutput":[], "mr":MRJobId }
             tmpSize = self.rnd.randint(1,200)
             outputSize = self.rnd.randint(1,200)
             self.blocksPerFile.append(tmpSize)
@@ -326,6 +365,9 @@ class SYSTEMMODEL:
             currentFileId = currentFileId + 2      
 
 
+
+            
+            
         #Para cada fichero que hemos definido anteriormente \all fileid + \all temp + \all output, hemos de indicar el tamaño
         # de cada uno de ellos self.blocksPerFile. El tamaño viene dado por el número de bloques que ocupará. Y el índice del list corresponde al id del fichero
 
@@ -336,6 +378,19 @@ class SYSTEMMODEL:
 
 
         #Las variables siguientes no las tiene que definir el suario, las creamos para facilitar los cálculos, pero se crean a partir de las variables anteriormente definidas
+
+
+        self.FilesPerTempFiles = {}
+        self.FilesPerOutputFiles = {}
+
+
+        for key in self.MapReduceFiles:
+            fitem = self.MapReduceFiles[key]
+            self.FilesPerTempFiles[fitem['temp']] = {"input" : key[1], "output": fitem['output']}
+            self.FilesPerOutputFiles[fitem['output']] = {"input" : key[1], "temp": fitem['temp']}
+
+
+
         self.tempFiles = set()
         self.outputFiles = set()
         

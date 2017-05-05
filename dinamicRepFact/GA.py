@@ -10,10 +10,11 @@ import sys
 import matplotlib.pyplot as plt 
 import matplotlib.cm as cm 
 import POPULATION as pop
-from decimal import Decimal
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt3d
 import SYSTEMMODEL as systemmodel
+import copy
+import time
 
 
 
@@ -30,7 +31,10 @@ class GA:
 
         self.populationSize = 100
         self.populationPt = pop.POPULATION(self.populationSize)
-        self.mutationProbability = 0.10
+        self.mutationProbability = 0.30
+        self.HadoopRulesCreation = True
+        self.BalanceObjective = True
+        self.HardMutation = False
 
 
 
@@ -38,12 +42,41 @@ class GA:
 #   MUTATIONS
 #******************************************************************************************
 
+
+    
+    def hardMutate(self,child):
+
+###        print "[Offsrping generation]: Mutation of blocks in process**********************" 
+
+        
+        for key,placement in child.iteritems():
+            numReadBlocks = len(placement['rnode'])
+            numWriteBlocks = len(placement['wnode'])
+
+            mutationOperators = [] 
+            if numReadBlocks>1:
+                mutationOperators.append(self.swapTwoSchedulleMutation)
+            if numWriteBlocks>0 and numReadBlocks>0:
+                mutationOperators.append(self.swapBlockSchedulleMutation)
+            if numReadBlocks>0:
+                mutationOperators.append(self.changeSchedulleMutation)
+            if numWriteBlocks>0:
+                mutationOperators.append(self.changeBlockMutation)
+            mutationOperators.append(self.addBlockMutation)
+            if numWriteBlocks>0:
+                mutationOperators.append(self.delBlockMutation)
+            
+            mutationOperators[random.randint(0,len(mutationOperators)-1)](placement)
+
+
+
+
     def swapTwoSchedulleMutation(self,blockDef): #swap the nodes where the MRjobs are schedulled for two MRjobs
 #        print blockDef
         swapIdx = random.sample(range(0,len(blockDef['rnode'])),2)
         blockDef['rnode'][swapIdx[0]], blockDef['rnode'][swapIdx[1]] =  blockDef['rnode'][swapIdx[1]], blockDef['rnode'][swapIdx[0]]
 #        print blockDef    
-        print "[Offsrping generation]: Swap Two Schedulled Mutation **********************"
+###        print "[Offsrping generation]: Swap Two Schedulled Mutation **********************"
         
     def swapBlockSchedulleMutation(self,blockDef): #swap the nodes where a MRjobs is schedulled with the node in which other copy of the block is stored
 #        print blockDef
@@ -51,7 +84,7 @@ class GA:
         blckIdx = random.randint(0,len(blockDef['wnode'])-1)
         blockDef['rnode'][schIdx], blockDef['wnode'][blckIdx] =  blockDef['wnode'][blckIdx], blockDef['rnode'][schIdx]
 #        print blockDef    
-        print "[Offsrping generation]: Swap Schedulle and Block Mutation **********************"
+###        print "[Offsrping generation]: Swap Schedulle and Block Mutation **********************"
         
     def changeSchedulleMutation(self,blockDef): #alter the value of the nodes where a MRjob is schedulled
 #        print blockDef
@@ -63,9 +96,9 @@ class GA:
             schIdx = random.randint(0,len(blockDef['rnode'])-1)
             blockDef['rnode'][schIdx]=newNode
  #           print blockDef    
-            print "[Offsrping generation]: Change Schedulle Node Mutation **********************"
-        else:
-            print "[Offsrping generation]: Change Schedulle Node Mutation ERROR the block is stored in all the nodes **********************"
+###            print "[Offsrping generation]: Change Schedulle Node Mutation **********************"
+###        else:
+###            print "[Offsrping generation]: Change Schedulle Node Mutation ERROR the block is stored in all the nodes **********************"
         
         
     def changeBlockMutation(self,blockDef): #alter the value of the nodes where a block is stored
@@ -78,9 +111,9 @@ class GA:
             blckIdx = random.randint(0,len(blockDef['wnode'])-1)
             blockDef['wnode'][blckIdx]=newNode
 #            print blockDef    
-            print "[Offsrping generation]: Change Block Node Mutation **********************"
-        else:
-            print "[Offsrping generation]: Change Block Node Mutation ERROR the block is stored in all the nodes **********************"
+###            print "[Offsrping generation]: Change Block Node Mutation **********************"
+###        else:
+###            print "[Offsrping generation]: Change Block Node Mutation ERROR the block is stored in all the nodes **********************"
     
     
     def addBlockMutation(self,blockDef): #add a new node to store a replica of the block
@@ -92,9 +125,9 @@ class GA:
                 newNode = random.randint(0,self.system.nodenumber-1)
             blockDef['wnode'].append(newNode)
 #            print blockDef    
-            print "[Offsrping generation]: Add Block Mutation **********************"
-        else:
-            print "[Offsrping generation]: Add Block Mutation ERROR the block is stored in all the nodes **********************"
+###            print "[Offsrping generation]: Add Block Mutation **********************"
+###        else:
+###            print "[Offsrping generation]: Add Block Mutation ERROR the block is stored in all the nodes **********************"
         
         
     def delBlockMutation(self,blockDef): #remove a node where a block replica is stored
@@ -102,15 +135,13 @@ class GA:
         blckIdx = random.randint(0,len(blockDef['wnode'])-1)
         blockDef['wnode'].pop(blckIdx)
 #        print blockDef    
-        print "[Offsrping generation]: Del Block Mutation **********************"
+###        print "[Offsrping generation]: Del Block Mutation **********************"
         
     
-    
-    
-    def mutate(self,child):
+    def softMutate(self,child):
         blockSelected = random.randint(0,len(child)-1)
         blockSelectedKey = child.keys()[blockSelected]
-        print "[Offsrping generation]: Mutation of block %s in process**********************" % str(blockSelectedKey)
+###        print "[Offsrping generation]: Mutation of block %s in process**********************" % str(blockSelectedKey)
         numReadBlocks = len(child[blockSelectedKey]['rnode'])
         numWriteBlocks = len(child[blockSelectedKey]['wnode'])
         
@@ -164,6 +195,14 @@ class GA:
         mutationOperators[random.randint(0,len(mutationOperators)-1)](child[blockSelectedKey])
     
 
+    def mutate(self,child):
+        if self.HardMutation:
+            self.hardMutate(child)
+        else:
+            self.softMutate(child)
+        
+        
+        
 #******************************************************************************************
 #   END MUTATIONS
 #******************************************************************************************
@@ -222,9 +261,9 @@ class GA:
 #            print c2[key]['rnode']
 #            print "+++++"
         offs.append(c1)
-        print "[Offsrping generation]: Children 1 added **********************"
+###        print "[Offsrping generation]: Children 1 added **********************"
         offs.append(c2)
-        print "[Offsrping generation]: Children 2 added **********************"
+###        print "[Offsrping generation]: Children 2 added **********************"
 
 
 
@@ -269,14 +308,16 @@ class GA:
         hdload = []
         
         for idx,usage in enumerate(nodesLoads):
-            if usage['cpuload']>0.0 and usage['memoryload']>0.0 and usage['memorysize']>0.0 and usage['hdload']>0.0 and usage['hdsize']>0.0:
-                cpuload.append(float( Decimal(str(usage['cpuload'])) / Decimal(str(self.system.nodeFeatures[idx]['cpuload'])) ))
-                memorysize.append(float( Decimal(str(usage['memorysize'])) / Decimal(str(self.system.nodeFeatures[idx]['memorysize'])) ))
-                memoryload.append(float( Decimal(str(usage['memoryload'])) / Decimal(str(self.system.nodeFeatures[idx]['memoryload'])) ))
-                hdsize.append(float( Decimal(str(usage['hdsize'])) / Decimal(str(self.system.nodeFeatures[idx]['hdsize'])) ))
-                hdload.append(float( Decimal(str(usage['hdload'])) / Decimal(str(self.system.nodeFeatures[idx]['hdload'])) ))
+            #if usage['cpuload']>0.0 and usage['memoryload']>0.0 and usage['memorysize']>0.0 and usage['hdload']>0.0 and usage['hdsize']>0.0:
+            if usage['cpuload']>0.0 and usage['hdsize']>0.0:
+                cpuload.append(usage['cpuload'] / self.system.nodeFeatures[idx]['cpuload'])
+##ReduceResourceElements                memorysize.append(usage['memorysize'] / self.system.nodeFeatures[idx]['memorysize'] )
+##ReduceResourceElements                memoryload.append(usage['memoryload'] / self.system.nodeFeatures[idx]['memoryload'] )
+                hdsize.append(usage['hdsize'] / self.system.nodeFeatures[idx]['hdsize'] )
+##ReduceResourceElements                hdload.append(usage['hdload'] / self.system.nodeFeatures[idx]['hdload'] )
 
-        return np.std(cpuload) + np.std(memorysize) + np.std(memoryload) + np.std(hdsize) + np.std(hdload)
+##ReduceResourceElements        return np.std(cpuload) + np.std(memorysize) + np.std(memoryload) + np.std(hdsize) + np.std(hdload)
+        return np.std(cpuload) + np.std(hdsize)
 
 
 #******************************************************************************************
@@ -301,17 +342,17 @@ class GA:
             rackFailure = self.system.rackFeatures[rack]["failrate"]
             nodeFailure = 1.0
             while (n<len(nodes)) and (nodes[n] / self.system.nodesXrack == rack):
-                nodeFailure = float( Decimal(str(nodeFailure)) * Decimal(str(self.system.nodeFeatures[nodes[n]]["failrate"])) )
+                nodeFailure = nodeFailure * self.system.nodeFeatures[nodes[n]]["failrate"]
                 n+=1
-            rackFailure = float( Decimal(str(rackFailure)) + Decimal(str(nodeFailure)) )
-            totalFailure = float( Decimal(str(totalFailure)) * Decimal(str(rackFailure)) )
+            rackFailure = rackFailure + nodeFailure
+            totalFailure = totalFailure * rackFailure
         
         return totalFailure
 
     def calculateFailure(self,solution):
         failure = 0.0
         for key in solution:
-            failure = float( Decimal(str(failure)) + Decimal(str(self.calculateBlockFailure(solution[key]))) )
+            failure = failure + self.calculateBlockFailure(solution[key])
         
         return failure
 
@@ -370,7 +411,7 @@ class GA:
                 mapBlocks.append(solution[key]['rnode'][self.system.MRjobsPerInputFile[inputFile].index(MRjob)])
         for n in tempBlocksToUpdate:
             for m in mapBlocks:
-                networkLoad = float( Decimal(str(networkLoad)) +  Decimal(str(self.distanceBetweenNodes(n,m))) * Decimal(str(self.system.MRusage[MRjob]['probability'])) * Decimal(str(self.system.MRusage[MRjob]['networkload'])) )
+                networkLoad = networkLoad +  self.distanceBetweenNodes(n,m) * self.system.MRusage[MRjob]['probability'] * self.system.MRusage[MRjob]['networkload'] 
         
 
         tempBlockReadReduce = block['rnode']
@@ -380,7 +421,7 @@ class GA:
                 allOutputReplicas += solution[key]['rnode'] + solution[key]['wnode']
         for n in tempBlockReadReduce:
             for m in allOutputReplicas:
-                networkLoad = float( Decimal(str(networkLoad)) +  Decimal(str(self.distanceBetweenNodes(n,m))) * Decimal(str(self.system.MRusage[MRjob]['probability'])) * Decimal(str(self.system.MRusage[MRjob]['networkload'])) )
+                networkLoad = networkLoad +  self.distanceBetweenNodes(n,m) * self.system.MRusage[MRjob]['probability'] * self.system.MRusage[MRjob]['networkload'] 
 
         
         return networkLoad
@@ -390,15 +431,63 @@ class GA:
         for key in solution:
             if solution[key]['filetype']=='temp':
                 tempfile = key[0]
-                fileStructure = (i for i in self.system.MapReduceFiles if self.system.MapReduceFiles[i]['temp']==tempfile).next()
-                MRjob = fileStructure[0]
-                inputfile = fileStructure[1]
-                outputfile = self.system.MapReduceFiles[fileStructure]['output']
+                #busco cual es el job MR que corresponde a este fichero temporal
+                #fileStructure = (i for i in self.system.MapReduceFiles if self.system.MapReduceFiles[i]['temp']==tempfile).next()
+                #MRjob = fileStructure[0]          
+                #inputfile = fileStructure[1]
+                #outputfile = self.system.MapReduceFiles[fileStructure]['output']
+
+                MRjob = self.system.MRjobsPerOutTempFile[tempfile]
+                inputfile = self.system.FilesPerTempFiles[tempfile]['input']
+                outputfile = self.system.FilesPerTempFiles[tempfile]['output']
+
                 #print "The temp "+str(tempfile)+" is from input "+str(inputfile)+ " and generates "+str(outputfile)+ " for MRjob "+str(MRjob)
-                networkLoad = float( Decimal(str(networkLoad)) +  Decimal(str(self.calculateBlockNetworkLoad(solution, solution[key], inputfile, outputfile, MRjob))) )
+                networkLoad = networkLoad +  self.calculateBlockNetworkLoad(solution, solution[key], inputfile, outputfile, MRjob)
         
         return networkLoad
+    
+    def computeMagicStructure(self,structure):
+        networkLoad = 0.0
+        #inicio = time.time()
+        for key in structure:
+            replicas = structure[key]
+            MRjob = replicas['mr']
+            for i in replicas['readInput']:
+                for j in replicas['writeTemp']:
+                    networkLoad = networkLoad +  self.distanceBetweenNodes(i,j) * self.system.MRusage[MRjob]['probability'] * self.system.MRusage[MRjob]['networkload'] 
+            for i in replicas['readTemp']:
+                for j in replicas['writeOutput']:
+                    networkLoad = networkLoad +  self.distanceBetweenNodes(i,j) * self.system.MRusage[MRjob]['probability'] * self.system.MRusage[MRjob]['networkload'] 
+        #print "Tiempo de cálculo de sumar matriz:"+str(inicio - time.time())
+        return networkLoad
+        
+        
+    def magicCalculateNetworkLoad(self,solution):
+        magicFilesStructure = copy.deepcopy(self.system.MagicFiles)
+        #inicio = time.time()
+        for key in solution:
+            if solution[key]['filetype']=='input':
+                inputId=key[0]
+                for mrId in self.system.MRjobsPerInputFile[inputId]:
+                    tempId=self.system.MapReduceFiles[(mrId,inputId)]['temp']
+                    outputId=self.system.MapReduceFiles[(mrId,inputId)]['output']
+                    magicFilesStructure[(inputId,tempId,outputId)]['readInput'] += solution[key]['rnode']
+                #tengo que añadir los bloques en todos los que usan este inputID, por tanto he de buscar (*,inputId)
+            elif solution[key]['filetype']=='temp':
+                tempId=key[0]
+                inputId = self.system.FilesPerTempFiles[tempId]['input']
+                outputId = self.system.FilesPerTempFiles[tempId]['output']
+                magicFilesStructure[(inputId,tempId,outputId)]['readTemp'] += solution[key]['rnode']
+                magicFilesStructure[(inputId,tempId,outputId)]['writeTemp'] += solution[key]['rnode'] + solution[key]['wnode']
 
+            elif solution[key]['filetype']=='output':
+                outputId=key[0]
+                inputId = self.system.FilesPerOutputFiles[outputId]['input']
+                tempId = self.system.FilesPerOutputFiles[outputId]['temp']
+                magicFilesStructure[(inputId,tempId,outputId)]['writeOutput'] += solution[key]['rnode'] + solution[key]['wnode']
+        #print "Tiempo de generación matriz:"+str(inicio - time.time())
+        
+        return self.computeMagicStructure(magicFilesStructure)
 #******************************************************************************************
 #   END NetworkLoad calculation
 #******************************************************************************************
@@ -412,20 +501,21 @@ class GA:
         
         nodesLoad = []
         for i in range(self.system.nodenumber):
-            nodesLoad.append({"cpuload" : 0.0, "memorysize": 0.0, "memoryload": 0.0, "hdsize": 0.0, "hdload": 0.0})
+            #nodesLoad.append({"cpuload" : 0.0, "memorysize": 0.0, "memoryload": 0.0, "hdsize": 0.0, "hdload": 0.0})
+            nodesLoad.append({"cpuload" : 0.0, "hdsize": 0.0})
 
         for key in chromosome:
             #añadir hdsize +1.0 por cada bloque
             #añadir hdloadwrite del MR con probabilidad de que este el MR en el sistema
             for element in (set(chromosome[key]['rnode']+chromosome[key]['wnode'])):
-                nodesLoad[element]['hdsize']= float( Decimal(str(nodesLoad[element]['hdsize'])) + Decimal(str(1.0)) )
+                nodesLoad[element]['hdsize']= nodesLoad[element]['hdsize'] + 1.0
                 # añadir la carga sobre el hd al escribir
                 if chromosome[key]['filetype']=='input':
                     #MRid = self.MRjobsPerInputFile[key[0]][chromosome[key]['rnode'].index(element)]
                     MRid = self.system.MRjobsPerInputFile[key[0]][0] #puede producirse que varios MRjobs ataquen al mismo archivo input. Pero solo hay un proceso que los escribe, por eso, cogemos solo la carga que genera uno de ellos sobre el archivo, y cogemos el que está en la posición 0
                 else:
                     MRid = self.system.MRjobsPerOutTempFile[key[0]]
-                nodesLoad[element]['hdload']= float( Decimal(str(nodesLoad[element]['hdload'])) + Decimal(str(self.system.MRusage[MRid]['hdloadwrite'])) * Decimal(str(self.system.MRusage[MRid]['probability'])) )  
+ ##ReduceResourceElements               nodesLoad[element]['hdload']= nodesLoad[element]['hdload'] + self.system.MRusage[MRid]['hdloadwrite'] * self.system.MRusage[MRid]['probability']  
                 
                 
                 
@@ -450,17 +540,17 @@ class GA:
                 MRid = MRNodeP[0]
                 nodeId = MRNodeP[1]
                 #añadir hdloadread
-                resourceComponent = 'hdloadread'
-                nodesLoad[nodeId]['hdload']= float( Decimal(str(nodesLoad[nodeId]['hdload'])) + Decimal(str(self.system.MRusage[MRid][resourceComponent])) * Decimal(str(self.system.MRusage[MRid]['probability'])) )  
+  ##ReduceResourceElements              resourceComponent = 'hdloadread'
+  ##ReduceResourceElements              nodesLoad[nodeId]['hdload']= nodesLoad[nodeId]['hdload'] + self.system.MRusage[MRid][resourceComponent] * self.system.MRusage[MRid]['probability']   
                 #añadir memoryload
-                resourceComponent = 'memoryload'
-                nodesLoad[nodeId][resourceComponent]= float( Decimal(str(nodesLoad[nodeId][resourceComponent])) + Decimal(str(self.system.MRusage[MRid][resourceComponent])) * Decimal(str(self.system.MRusage[MRid]['probability'])) )  
+  ##ReduceResourceElements              resourceComponent = 'memoryload'
+  ##ReduceResourceElements              nodesLoad[nodeId][resourceComponent]= nodesLoad[nodeId][resourceComponent] + self.system.MRusage[MRid][resourceComponent] * self.system.MRusage[MRid]['probability']  
                 #añadir memorysize
-                resourceComponent = 'memorysize'
-                nodesLoad[nodeId][resourceComponent]= float( Decimal(str(nodesLoad[nodeId][resourceComponent])) + Decimal(str(self.system.MRusage[MRid][resourceComponent])) * Decimal(str(self.system.MRusage[MRid]['probability'])) )  
+ ##ReduceResourceElements               resourceComponent = 'memorysize'
+ ##ReduceResourceElements               nodesLoad[nodeId][resourceComponent]= nodesLoad[nodeId][resourceComponent] + self.system.MRusage[MRid][resourceComponent] * self.system.MRusage[MRid]['probability']  
                 #añadir cpuload
                 resourceComponent = 'cpuload'
-                nodesLoad[nodeId][resourceComponent]= float( Decimal(str(nodesLoad[nodeId][resourceComponent])) + Decimal(str(self.system.MRusage[MRid][resourceComponent])) * Decimal(str(self.system.MRusage[MRid]['probability'])) )  
+                nodesLoad[nodeId][resourceComponent]= nodesLoad[nodeId][resourceComponent] + self.system.MRusage[MRid][resourceComponent] * self.system.MRusage[MRid]['probability']  
                 
         
         return nodesLoad
@@ -489,11 +579,14 @@ class GA:
             currentNodes = set(chromosome[key]['rnode'] + chromosome[key]['wnode'])
             currentNodes = {element / self.system.nodesXrack for element in currentNodes}
             if (len(currentNodes)<2):
+                #print key
+                #print currentNodes
                 return False
         return True
     
     def nodea_lt_nodeb(self,a,b):
-        for feature in ('cpuload','hdload','hdsize','memorysize','memoryload'):
+#ReduceResourceElements          for feature in ('cpuload','hdload','hdsize','memorysize','memoryload'):
+        for feature in ('cpuload','hdsize'):
             if b[feature]<a[feature]:
                 print "PEQUEÑÑÑÑÑÑÑÑOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"
                 return False
@@ -509,6 +602,7 @@ class GA:
         
         chromosome = pop.population[index]
         if not self.rackAwareness(chromosome):
+            #print chromosome
             return False
             
         nodesLoads = pop.nodesUsages[index]
@@ -527,24 +621,31 @@ class GA:
 
 
     def calculateFitnessObjectives(self, pop, index): #TODO
+        #inicio = time.time()
         chr_fitness = {}
         chr_fitness["index"] = index
         #chr_fitness["performance"] = random.randint(1,100)
         
         chromosome=pop.population[index]
         nodeLoads= pop.nodesUsages[index]
+
         
         if self.checkConstraints(pop,index):
-            chr_fitness["network"] = self.calculateNetworkLoad(chromosome)
+            chr_fitness["network"] = self.magicCalculateNetworkLoad(chromosome)
+            #chr_fitness["network"] = 1.0
             chr_fitness["reliability"] = self.calculateFailure(chromosome)
             #chr_fitness["nodenumber"] = self.calculateNodeNumber(chromosome)
-            chr_fitness["balanceuse"] = self.calculateClusterBalanceUse(nodeLoads)
+            if self.BalanceObjective:
+                chr_fitness["balanceuse"] = self.calculateClusterBalanceUse(nodeLoads)
             #TODO redondear los valores de los fitness????
         else:
             chr_fitness["network"] = float('inf')
             chr_fitness["reliability"] = float('inf')
             #chr_fitness["nodenumber"] = float('inf')
-            chr_fitness["balanceuse"] = float('inf')
+            if self.BalanceObjective:
+                chr_fitness["balanceuse"] = float('inf')
+        #print "Tiempo de cálculo de todos los fitness:"+str(inicio - time.time())
+
             
         return chr_fitness
         
@@ -649,31 +750,34 @@ class GA:
         self.calculateDominants(popT)
         self.calculateFronts(popT)
              
-    def plotFronts(self,popT):  
+    def plotFronts(self,popT,serieA,serieB):  
       
         f = 0
-        #fig = plt.figure()
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
         colors = iter(cm.rainbow(np.linspace(0, 1, 15)))
-        while len(popT.fronts[f])!=0:
+        #while len(popT.fronts[f])!=0:
+        while f<=0:
             thisfront = [popT.fitness[i] for i in popT.fronts[f]]
 
             #a = [thisfront[i]["balanceuse"] for i,v in enumerate(thisfront)]
-            a = [thisfront[i]["network"] for i,v in enumerate(thisfront)]
-            b = [thisfront[i]["reliability"] for i,v in enumerate(thisfront)]
+            a = [thisfront[i][serieA] for i,v in enumerate(thisfront)]
+            b = [thisfront[i][serieB] for i,v in enumerate(thisfront)]
 
             #ax1 = fig.add_subplot(111)
             
-            plt.scatter(a, b, s=10, color=next(colors), marker="o")
+            ax.scatter(a, b, s=10, color=next(colors), marker="o")
             #ax1.annotate('a',(a,b))
             f +=1
         
-        plt.show()    
+        plt.show() 
+        plt.close(fig)
         
         
     def plot3DFronts(self,popT):
-        #self.plot3DFronts0(popT)
+        self.plot3DFronts0(popT)
         #self.plot3DFronts1(popT)
-        self.plot3DFronts2(popT)
+        #self.plot3DFronts2(popT)
         
     def plot3DFronts0(self,popT):  
           
@@ -684,7 +788,8 @@ class GA:
         colors = iter(cm.rainbow(np.linspace(0, 1, 15)))
     # For each set of style and range settings, plot n random points in the box
     # defined by x in [23, 32], y in [0, 100], z in [zlow, zhigh].
-        while len(popT.fronts[f])!=0:
+        #while len(popT.fronts[f])!=0:
+        while f<=0:
             thisfront = [popT.fitness[i] for i in popT.fronts[f]]
 
             a = [thisfront[i]["balanceuse"] for i,v in enumerate(thisfront)]
@@ -701,6 +806,7 @@ class GA:
         ax.set_zlabel('reliability')
     
         plt3d.show()  
+        plt.close(fig)
         
         
     def plot3DFronts1(self,popT):  
@@ -717,7 +823,8 @@ class GA:
         colors = iter(cm.rainbow(np.linspace(0, 1, 15)))
     # For each set of style and range settings, plot n random points in the box
     # defined by x in [23, 32], y in [0, 100], z in [zlow, zhigh].
-        while len(popT.fronts[f])!=0:
+        #while len(popT.fronts[f])!=0:
+        while f<=0:
             thisfront = [popT.fitness[i] for i in popT.fronts[f]]
 
             a = [thisfront[i]["balanceuse"] for i,v in enumerate(thisfront)]
@@ -739,7 +846,8 @@ class GA:
         ax[0].set_ylabel('network')
         ax[0].set_zlabel('reliability')
     
-        plt3d.show()  
+        plt3d.show() 
+        plt.close(fig)
 
     def plot3DFronts2(self,popT):  
           
@@ -751,7 +859,8 @@ class GA:
         colors = iter(cm.rainbow(np.linspace(0, 1, 15)))
     # For each set of style and range settings, plot n random points in the box
     # defined by x in [23, 32], y in [0, 100], z in [zlow, zhigh].
-        while len(popT.fronts[f])!=0:
+        #while len(popT.fronts[f])!=0:
+        while f<=0:
             thisfront = [popT.fitness[i] for i in popT.fronts[f]]
 
             a = [thisfront[i]["balanceuse"] for i,v in enumerate(thisfront)]
@@ -777,6 +886,7 @@ class GA:
         ax.set_zlabel('reliability')
     
         plt3d.show() 
+        plt.close(fig)
             
 #******************************************************************************************
 #   END NSGA-II Algorithm
@@ -810,11 +920,30 @@ class GA:
 #                    numberOfMRjobsForFile = 1 #if not, the number of MRfiles that access this file is 1 because is a temp or output file
 #                    filetype = "tempOutput"
                 for blockId in range(numberOfBlocks):
-                    replicationFactor = int(round(np.random.normal(3.0, 0.4))) # mean and standard deviation
-                    if replicationFactor>self.system.nodenumber: #when the block replica is bigger than total node number, is set to the maximum
-                        replicationFactor=self.system.nodenumber        
-                    try:
-                        allocation=random.sample(range(0, self.system.nodenumber), replicationFactor) #random selection of the node to place the blocks
+                    if self.HadoopRulesCreation:
+                        replicationFactor = 3
+                    else:
+                        replicationFactor = int(round(np.random.normal(3.0, 0.4))) # mean and standard deviation
+                    
+                    try:                   
+                        if self.HadoopRulesCreation:
+                            if replicationFactor-1>self.system.racknumber: #when the block replica is bigger than total node number, is set to the maximum
+                                replicationFactor=self.system.racknumber                             
+                            #metemos dos réplicas en un mismo armario y la tercera en otro
+                            rackAllocation=random.sample(range(0, self.system.racknumber), replicationFactor-1)
+                            allocation = []
+                            for rack in rackAllocation:
+                                shift = random.randint(0,self.system.nodesXrack-1)
+                                allocation.append(rack*self.system.nodesXrack +shift)
+                            shift2 = shift
+                            while shift2 == shift:
+                                shift = random.randint(0,self.system.nodesXrack-1)
+                            allocation.append(rack*self.system.nodesXrack + shift)
+                            
+                        else:
+                            if replicationFactor>self.system.nodenumber: #when the block replica is bigger than total node number, is set to the maximum
+                                replicationFactor=self.system.nodenumber        
+                            allocation=random.sample(range(0, self.system.nodenumber), replicationFactor) #random selection of the node to place the blocks
                             #selection of the nodes to be read by the tasks of the mapreduce job            
                     except ValueError:
                         print('Sample size exceeded population size.')
@@ -840,8 +969,12 @@ class GA:
         self.calculateSolutionsWorkload(popT)
         self.calculatePopulationFitnessObjectives(popT)
         self.fastNonDominatedSort(popT)
-        self.plot3DFronts(popT)
-        self.plotFronts(popT)
+        if self.BalanceObjective:
+            self.plot3DFronts(popT)
+            self.plotFronts(popT,"balanceuse","network")
+            self.plotFronts(popT,"balanceuse","reliability")
+
+        self.plotFronts(popT,"network","reliability")
         self.calculateCrowdingDistances(popT)
 
     def tournamentSelection(self,k,popSize):
@@ -869,8 +1002,8 @@ class GA:
             father2 = father1
             while father1 == father2:
                 father2 = self.fatherSelection(orderedFathers)
-            print "[Father selection]: Father1: %i **********************" % father1
-            print "[Father selection]: Father1: %i **********************" % father2
+###            print "[Father selection]: Father1: %i **********************" % father1
+###            print "[Father selection]: Father1: %i **********************" % father2
             
             self.crossover(self.populationPt.population[father1],self.populationPt.population[father2],offspring.population)
         
@@ -879,7 +1012,7 @@ class GA:
         for index,children in enumerate(offspring.population):
             if random.uniform(0,1) < self.mutationProbability:
                 self.mutate(children)
-                print "[Offsrping generation]: Children %i MUTATED **********************" % index
+###                print "[Offsrping generation]: Children %i MUTATED **********************" % index
             
         print "[Offsrping generation]: Population GENERATED **********************"  
         
@@ -911,16 +1044,36 @@ class GA:
         offspring.population = []
 
         offspring = self.evolveToOffspring()
-        
+        tiempo1 = time.time()
+        tiempo2 = tiempo1
+        print "Tiempo inicial:"+str(tiempo2-tiempo1)
         self.calculateSolutionsWorkload(offspring)
+        tiempo1,tiempo2 = tiempo2,time.time()
+        print "Tiempo de calcular workload:"+str(tiempo2-tiempo1)
+        timea = time.time()
         self.calculatePopulationFitnessObjectives(offspring)
+        print "aaaaaa"+str(time.time()-timea)
+        tiempo1,tiempo2 = tiempo2,time.time()
+        print "Tiempo de calcular fitness:"+str(tiempo2-tiempo1)
         
+        timeb = time.time()
         populationRt = offspring.populationUnion(self.populationPt,offspring)
+        print "bbbb"+str(time.time()-timeb)
+        tiempo1,tiempo2 = tiempo2,time.time()
+        print "Tiempo de unir poblaciones:"+str(tiempo2-tiempo1)
         
         self.fastNonDominatedSort(populationRt)
+        tiempo1,tiempo2 = tiempo2,time.time()
+        print "Tiempo de calcular NSGA2:"+str(tiempo2-tiempo1)
+        
         self.calculateCrowdingDistances(populationRt)
+        tiempo1,tiempo2 = tiempo2,time.time()
+        print "Tiempo de calcular crowding:"+str(tiempo2-tiempo1)
+
         
         orderedElements = self.crowdedComparisonOrder(populationRt)
+        tiempo1,tiempo2 = tiempo2,time.time()
+        print "Tiempo de ordenar:"+str(tiempo2-tiempo1)
         
         finalPopulation = pop.POPULATION(self.populationSize)
         
@@ -931,17 +1084,28 @@ class GA:
 
         for i,v in enumerate(finalPopulation.fitness):
             finalPopulation.fitness[i]["index"]=i        
+        tiempo1,tiempo2 = tiempo2,time.time()
+        print "Tiempo de copiar nueva generación:"+str(tiempo2-tiempo1)
         
         #self.populationPt = offspring
         self.populationPt = finalPopulation
         
         
         self.fastNonDominatedSort(self.populationPt)
+        tiempo1,tiempo2 = tiempo2,time.time()
+        print "Tiempo del segundo nsga2:"+str(tiempo2-tiempo1)
+
         self.calculateCrowdingDistances(self.populationPt)
+        tiempo1,tiempo2 = tiempo2,time.time()
+        print "Tiempo del segundo crowding distances:"+str(tiempo2-tiempo1)
         
 
-        self.plot3DFronts(self.populationPt)
-        self.plotFronts(self.populationPt)
+        if self.BalanceObjective:
+            self.plot3DFronts(self.populationPt)
+            self.plotFronts(self.populationPt,"balanceuse","network")
+            self.plotFronts(self.populationPt,"balanceuse","reliability")
+
+        self.plotFronts(self.populationPt,"network","reliability")
         
         
 
