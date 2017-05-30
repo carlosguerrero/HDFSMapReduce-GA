@@ -13,7 +13,6 @@ import RESULTS as results
 
 
 
-res = results.RESULTS()
 
 
 #SI HAY QUE METER UN BUCLE CON DISTINTOS CASOS EMPEZARÍA AQUI
@@ -21,7 +20,6 @@ res = results.RESULTS()
 n_nodes=200
 system = systemmodel.SYSTEMMODEL()
 system.configurationB(nodes=n_nodes)
-res.initDataCalculation()
 
 g = ga.GA(system)
 
@@ -29,10 +27,17 @@ g.HadoopRulesCreation = True
 g.BalanceObjective = False
 g.HardMutation = True
 
+system.initialAllocation=g.getRandomChromosome()
+
+numberofGenerations = 5
+
+
+res = results.RESULTS()
+res.initDataCalculation()
+g.Migration = 'OBJECTIVE' # OBJECTIVE or NSGA
 g.generatePopulation(g.populationPt)
+res.idString = g.Migration
 
-
-numberofGenerations = 100
 
 paretoResults = []
 paretoGeneration=g.populationPt.paretoExport()
@@ -46,6 +51,21 @@ for i in range(numberofGenerations):
     paretoResults.append(paretoGeneration)
 
 res.calculateData(paretoResults,g.BalanceObjective)
+res.storeCSV(g.Migration)
+res.storeData(paretoResults)
+res.closeCSVs()
+
+res.plotparetoEvolution(paretoResults,1)
+
+dataSerie = [res.network,res.reliability,res.migration,res.nodeNumber,res.replicaNumber]
+title = ['Network','Reliability','Migration','Node number', 'Replica number']
+ylabel = ['Time units (t)','Fail rate (1/t)','Time units (t)','Node number','Replica number']
+seriesToPlot = ['mean','min','single']
+minYaxes = [0,0,0,0,0]
+
+res.plotfitEvoluation(dataSerie,title,ylabel,seriesToPlot,minYaxes)
+
+
     
 
 

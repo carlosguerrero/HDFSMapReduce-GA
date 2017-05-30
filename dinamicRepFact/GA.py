@@ -29,12 +29,13 @@ class GA:
 #        self.racknumber = 5 #el nodenumber ha de ser divisible por este numero
 #        self.nodesXrack = self.nodenumber / self.racknumber
 
-        self.populationSize = 100
+        self.populationSize = 20
         self.populationPt = pop.POPULATION(self.populationSize)
-        self.mutationProbability = 0.30
+        self.mutationProbability = 0.40
         self.HadoopRulesCreation = True
         self.BalanceObjective = True
         self.HardMutation = False
+        self.Migration = 'OBJECTIVE'  # OBJECTIVE or NSGA
 
 
 
@@ -75,6 +76,7 @@ class GA:
 #        print blockDef
         swapIdx = random.sample(range(0,len(blockDef['rnode'])),2)
         blockDef['rnode'][swapIdx[0]], blockDef['rnode'][swapIdx[1]] =  blockDef['rnode'][swapIdx[1]], blockDef['rnode'][swapIdx[0]]
+
 #        print blockDef    
 ###        print "[Offsrping generation]: Swap Two Schedulled Mutation **********************"
         
@@ -83,6 +85,7 @@ class GA:
         schIdx = random.randint(0,len(blockDef['rnode'])-1)
         blckIdx = random.randint(0,len(blockDef['wnode'])-1)
         blockDef['rnode'][schIdx], blockDef['wnode'][blckIdx] =  blockDef['wnode'][blckIdx], blockDef['rnode'][schIdx]
+
 #        print blockDef    
 ###        print "[Offsrping generation]: Swap Schedulle and Block Mutation **********************"
         
@@ -94,7 +97,11 @@ class GA:
             while newNode in inUse or newNode is None:
                 newNode = random.randint(0,self.system.nodenumber-1)
             schIdx = random.randint(0,len(blockDef['rnode'])-1)
+            oldValue = blockDef['rnode'][schIdx]
             blockDef['rnode'][schIdx]=newNode
+            if not self.replicaRackAwareness(blockDef):
+                blockDef['rnode'][schIdx]=oldValue
+            
  #           print blockDef    
 ###            print "[Offsrping generation]: Change Schedulle Node Mutation **********************"
 ###        else:
@@ -109,7 +116,11 @@ class GA:
             while newNode in inUse or newNode is None:
                 newNode = random.randint(0,self.system.nodenumber-1)
             blckIdx = random.randint(0,len(blockDef['wnode'])-1)
+            oldValue = blockDef['wnode'][blckIdx]
             blockDef['wnode'][blckIdx]=newNode
+            if not self.replicaRackAwareness(blockDef):
+                blockDef['wnode'][blckIdx]=oldValue
+
 #            print blockDef    
 ###            print "[Offsrping generation]: Change Block Node Mutation **********************"
 ###        else:
@@ -133,7 +144,10 @@ class GA:
     def delBlockMutation(self,blockDef): #remove a node where a block replica is stored
 #        print blockDef
         blckIdx = random.randint(0,len(blockDef['wnode'])-1)
+        removedValue = blockDef['wnode'][blckIdx]
         blockDef['wnode'].pop(blckIdx)
+        if not self.replicaRackAwareness(blockDef):
+            blockDef['wnode'].append(removedValue)
 #        print blockDef    
 ###        print "[Offsrping generation]: Del Block Mutation **********************"
         
@@ -202,11 +216,93 @@ class GA:
             self.softMutate(child)
         
         
-        
 #******************************************************************************************
 #   END MUTATIONS
 #******************************************************************************************
 
+    def crossover(self,f1,f2,offs):
+        c1 = f1.copy()
+        c2 = f2.copy()
+        for key,value in c1.iteritems():
+            if random.uniform(0,1) > 0.5:
+                c1[key],c2[key] = c2[key],c1[key]
+        offs.append(c1)
+        offs.append(c2)
+
+#******************************************************************************************
+#   CROSSOVER
+#******************************************************************************************
+
+
+    def crossover2(self,f1,f2,offs):
+        c1 = f1.copy()
+        c2 = f2.copy()
+        #crossover of the write/block chromosome
+        for key,value in c1.iteritems():
+            setF1 = set(c1[key]['wnode'])
+            setF2 = set(c2[key]['wnode'])
+            
+#            totalINI = len(c1[key]['wnode'])+len(c2[key]['wnode'])
+            commonNodes = setF1 & setF2 # & es la intersección
+            writeNodes = setF1 | setF2 # | es la union
+            diffNodes = writeNodes - commonNodes
+            
+            c1[key]['wnode']=[]
+            c2[key]['wnode']=[]
+
+            for node in commonNodes:
+                c1[key]['wnode'].append(node)
+                c2[key]['wnode'].append(node)
+            for node in diffNodes:
+                c1[key]['wnode'].append(node)
+                c2[key]['wnode'].append(node)
+            
+#            print c1[key]['wnode']
+#            print c2[key]['wnode']
+            if len(writeNodes)<=1 and len(commonNodes)==0: #si solo hay uno, lo ponemos en ambos
+                c1[key]['wnode']=list(writeNodes)
+                c2[key]['wnode']=list(writeNodes)
+            elif len(writeNodes)>1 and len(commonNodes)==0: #si hay mas de 2 y ninguno en comun, como minimo habrá uno en cada uno
+                setC1 = set(random.sample(writeNodes,random.randint(1,len(writeNodes)-1)))
+                setC2 = writeNodes-setC1
+                c1[key]['wnode']=list(setC1 | commonNodes) # union de los comunes con los nuevos
+                c2[key]['wnode']=list(setC2 | commonNodes)
+            elif len(commonNodes)!=0: #si llegamos aquí es porque al menos hay uno en común, entonces los no comunes se pueden repartir sin un mínimo
+                setC1 = set(random.sample(writeNodes,random.randint(0,len(writeNodes))))
+                setC2 = writeNodes-setC1
+                c1[key]['wnode']=list(setC1 | commonNodes) # union de los comunes con los nuevos
+                c2[key]['wnode']=list(setC2 | commonNodes)                
+            else:
+                print "MEGAERROR"
+                sys.exit(1)
+#            totalFIN = len(c1[key]['wnode'])+len(c2[key]['wnode'])
+#            if totalFIN != totalINI:
+#                print "MEGAERROR"
+#                sys.exit(1)
+#            print c1[key]['wnode']
+#            print c2[key]['wnode']
+#            print "****"
+        #crossover of the read/MRjobs chromosome
+        for key,value in c1.iteritems():
+#            print key
+#            print c1[key]['rnode']
+#            print c2[key]['rnode']
+            for i in range(len(c1[key]['rnode'])):
+                if random.uniform(0,1) > 0.5:
+                    c1[key]['rnode'][i],c2[key]['rnode'][i] = c2[key]['rnode'][i],c1[key]['rnode'][i]
+#            print c1[key]['rnode']
+#            print c2[key]['rnode']
+#            print "+++++"
+        offs.append(c1)
+###        print "[Offsrping generation]: Children 1 added **********************"
+        offs.append(c2)
+###        print "[Offsrping generation]: Children 2 added **********************"
+
+
+
+#******************************************************************************************
+#   END CROSSOVER
+#******************************************************************************************
 
 
 #******************************************************************************************
@@ -214,7 +310,7 @@ class GA:
 #******************************************************************************************
 
 
-    def crossover(self,f1,f2,offs):
+    def OLDcrossoverOLD(self,f1,f2,offs):
         c1 = f1.copy()
         c2 = f2.copy()
         #crossover of the write/block chromosome
@@ -288,6 +384,33 @@ class GA:
 #******************************************************************************************
 #   END nodenumber calculation
 #******************************************************************************************
+
+
+#******************************************************************************************
+#   Migration cost calculation
+#******************************************************************************************
+
+    def calculateMigrationCost(self, solution, originSolution):
+        newRacks = 0
+        newNodes = 0
+        for key in solution:
+            currentNodes = set(solution[key]['rnode'] + solution[key]['wnode'])
+            currentRacks = {element / self.system.nodesXrack for element in currentNodes}
+        
+            originNodes = set(originSolution[key]['rnode'] + originSolution[key]['wnode'])
+            originRacks = {element / self.system.nodesXrack for element in originNodes}
+
+            newRacks += len(currentRacks - originRacks)
+            newNodes += len(currentNodes - originNodes)
+            
+        return newRacks * self.system.migrationBetweenRacks + newNodes * self.system.migrationBetweenNodes
+
+
+
+#******************************************************************************************
+#   END  Migration cost calculation
+#******************************************************************************************
+
 
 
 
@@ -568,19 +691,58 @@ class GA:
 #******************************************************************************************
 
 
+#    def addReplica(self, fileblock):
+#
+#        replicationFactor = 3
+#        
+#        rackAllocation=random.sample(range(0, self.system.racknumber), replicationFactor-1)
+#        allocation = []
+#        for rack in rackAllocation:
+#            shift = random.randint(0,self.system.nodesXrack-1)
+#            allocation.append(rack*self.system.nodesXrack +shift)
+#        shift2 = shift
+#        while shift2 == shift:
+#            shift = random.randint(0,self.system.nodesXrack-1)
+#        allocation.append(rack*self.system.nodesXrack + shift)
+#
+#        
+#
+#    def forceRackAwareness(self,chromosome):
+#        for key in chromosome:
+#            currentNodes = set(chromosome[key]['rnode'] + chromosome[key]['wnode'])
+#            currentRacks = {element / self.system.nodesXrack for element in currentNodes}
+#            if (len(currentRacks)<2) or (len(currentNodes)<3):
+#                if len(currentNodes)==0:
+#                
+#                elif len(currentNodes)==1:
+#
+#                elif len(currentNodes)==2:
+#
+#                elif len(currentNodes)>=3:
+#                    
+#                print "not awareness"
+#                print chromosome[key]['rnode'] + chromosome[key]['wnode']
+#                print key
+#                print currentNodes
+#
+
 
 #******************************************************************************************
 #   Model constraints
 #******************************************************************************************
 
+    def replicaRackAwareness(self,blockGene):
+        currentNodes = set(blockGene['rnode'] + blockGene['wnode'])
+        currentNodes = {element / self.system.nodesXrack for element in currentNodes}
+        if (len(currentNodes)<2):
+            return False
+        return True
+    
+
     def rackAwareness(self,chromosome):
         #check if at least two different racks are used     
         for key in chromosome:
-            currentNodes = set(chromosome[key]['rnode'] + chromosome[key]['wnode'])
-            currentNodes = {element / self.system.nodesXrack for element in currentNodes}
-            if (len(currentNodes)<2):
-                #print key
-                #print currentNodes
+            if not self.replicaRackAwareness(chromosome[key]):
                 return False
         return True
     
@@ -634,6 +796,7 @@ class GA:
             chr_fitness["network"] = self.magicCalculateNetworkLoad(chromosome)
             #chr_fitness["network"] = 1.0
             chr_fitness["reliability"] = self.calculateFailure(chromosome)
+            chr_fitness["migration"] = self.calculateMigrationCost(chromosome,self.system.initialAllocation)
             #chr_fitness["nodenumber"] = self.calculateNodeNumber(chromosome)
             if self.BalanceObjective:
                 chr_fitness["balanceuse"] = self.calculateClusterBalanceUse(nodeLoads)
@@ -641,6 +804,7 @@ class GA:
         else:
             chr_fitness["network"] = float('inf')
             chr_fitness["reliability"] = float('inf')
+            chr_fitness["migration"] = float('inf')
             #chr_fitness["nodenumber"] = float('inf')
             if self.BalanceObjective:
                 chr_fitness["balanceuse"] = float('inf')
@@ -676,9 +840,10 @@ class GA:
         #### OJOOOOOO Hay un atributo en los dictionarios que no hay que tener en cuenta, el index!!!
         for key in a:
             if key!="index":  #por ese motivo está este if.
-                if b[key]<=a[key]:
-                    Adominates = False
-                    break
+                if key!="migration" or self.Migration!="NSGA":
+                    if b[key]<=a[key]:
+                        Adominates = False
+                        break
         return Adominates        
 
         
@@ -712,7 +877,12 @@ class GA:
             self.crowdingDistancesAssigments(popT,popT.fronts[i])
             i+=1
 
-
+    def calculateMigrationDistances(self,popT):
+        
+        for i in range(len(popT.fitness)):
+            popT.crowdingDistances[i]=popT.fitness[i]['migration']
+        
+        
     def calculateDominants(self,popT):
         
         for i in range(len(popT.population)):
@@ -792,7 +962,7 @@ class GA:
         while f<=0:
             thisfront = [popT.fitness[i] for i in popT.fronts[f]]
 
-            a = [thisfront[i]["balanceuse"] for i,v in enumerate(thisfront)]
+            a = [thisfront[i]["migration"] for i,v in enumerate(thisfront)]
             b = [thisfront[i]["network"] for i,v in enumerate(thisfront)]
             c = [thisfront[i]["reliability"] for i,v in enumerate(thisfront)]
 
@@ -801,7 +971,7 @@ class GA:
             
             f +=1
     
-        ax.set_xlabel('balanceuse')
+        ax.set_xlabel('migration')
         ax.set_ylabel('network')
         ax.set_zlabel('reliability')
     
@@ -897,66 +1067,68 @@ class GA:
 #   Evolution based on NSGA-II 
 #******************************************************************************************
 
-
-    def generatePopulation(self,popT):
-        for i in range(self.populationSize):
-            chromosome = {}
-        
-            for fileId, numberOfBlocks in enumerate(self.system.blocksPerFile):
-                try:
-                    numberOfMRjobsForFile = len(self.system.MRjobsPerInputFile[fileId]) #when the file is a input file the number of MRjobs is considered
-                    filetype = "input"
-                except KeyError:
-                    if fileId in self.system.tempFiles:
-                        numberOfMRjobsForFile = 1 #if not, the number of MRfiles that access this file is 1 because is a temp or output file
-                        filetype = "temp"
-                    elif fileId in self.system.outputFiles:
-                        numberOfMRjobsForFile = 0 #if not, the number of MRfiles that access this file is 1 because is a temp or output file
-                        filetype = "output"
-                    else:
-                        numberOfMRjobsForFile = 1 #if not, the number of MRfiles that access this file is 1 because is a temp or output file
-                        filetype = "ERROR"
+    def getRandomChromosome(self):
+        chromosome = {}
+    
+        for fileId, numberOfBlocks in enumerate(self.system.blocksPerFile):
+            try:
+                numberOfMRjobsForFile = len(self.system.MRjobsPerInputFile[fileId]) #when the file is a input file the number of MRjobs is considered
+                filetype = "input"
+            except KeyError:
+                if fileId in self.system.tempFiles:
+                    numberOfMRjobsForFile = 1 #if not, the number of MRfiles that access this file is 1 because is a temp or output file
+                    filetype = "temp"
+                elif fileId in self.system.outputFiles:
+                    numberOfMRjobsForFile = 0 #if not, the number of MRfiles that access this file is 1 because is a temp or output file
+                    filetype = "output"
+                else:
+                    numberOfMRjobsForFile = 1 #if not, the number of MRfiles that access this file is 1 because is a temp or output file
+                    filetype = "ERROR"
 #                except KeyError:
 #                    numberOfMRjobsForFile = 1 #if not, the number of MRfiles that access this file is 1 because is a temp or output file
 #                    filetype = "tempOutput"
-                for blockId in range(numberOfBlocks):
+            for blockId in range(numberOfBlocks):
+                if self.HadoopRulesCreation:
+                    replicationFactor = 3
+                else:
+                    replicationFactor = int(round(np.random.normal(3.0, 0.4))) # mean and standard deviation
+                
+                try:                   
                     if self.HadoopRulesCreation:
-                        replicationFactor = 3
+                        if replicationFactor-1>self.system.racknumber: #when the block replica is bigger than total node number, is set to the maximum
+                            replicationFactor=self.system.racknumber                             
+                        #metemos dos réplicas en un mismo armario y la tercera en otro
+                        rackAllocation=random.sample(range(0, self.system.racknumber), replicationFactor-1)
+                        allocation = []
+                        for rack in rackAllocation:
+                            shift = random.randint(0,self.system.nodesXrack-1)
+                            allocation.append(rack*self.system.nodesXrack +shift)
+                        shift2 = shift
+                        while shift2 == shift:
+                            shift = random.randint(0,self.system.nodesXrack-1)
+                        allocation.append(rack*self.system.nodesXrack + shift)
+                        
                     else:
-                        replicationFactor = int(round(np.random.normal(3.0, 0.4))) # mean and standard deviation
-                    
-                    try:                   
-                        if self.HadoopRulesCreation:
-                            if replicationFactor-1>self.system.racknumber: #when the block replica is bigger than total node number, is set to the maximum
-                                replicationFactor=self.system.racknumber                             
-                            #metemos dos réplicas en un mismo armario y la tercera en otro
-                            rackAllocation=random.sample(range(0, self.system.racknumber), replicationFactor-1)
-                            allocation = []
-                            for rack in rackAllocation:
-                                shift = random.randint(0,self.system.nodesXrack-1)
-                                allocation.append(rack*self.system.nodesXrack +shift)
-                            shift2 = shift
-                            while shift2 == shift:
-                                shift = random.randint(0,self.system.nodesXrack-1)
-                            allocation.append(rack*self.system.nodesXrack + shift)
-                            
-                        else:
-                            if replicationFactor>self.system.nodenumber: #when the block replica is bigger than total node number, is set to the maximum
-                                replicationFactor=self.system.nodenumber        
-                            allocation=random.sample(range(0, self.system.nodenumber), replicationFactor) #random selection of the node to place the blocks
-                            #selection of the nodes to be read by the tasks of the mapreduce job            
+                        if replicationFactor>self.system.nodenumber: #when the block replica is bigger than total node number, is set to the maximum
+                            replicationFactor=self.system.nodenumber        
+                        allocation=random.sample(range(0, self.system.nodenumber), replicationFactor) #random selection of the node to place the blocks
+                        #selection of the nodes to be read by the tasks of the mapreduce job            
+                except ValueError:
+                    print('Sample size exceeded population size.')
+                readallocation=[]
+                for x in range(numberOfMRjobsForFile): #chooising as many readnodes as MRjobs are associated  
+                    readallocation.append(random.choice(allocation))
+                for readnode in iter(readallocation):
+                    try:
+                        allocation.remove(readnode)
                     except ValueError:
-                        print('Sample size exceeded population size.')
-                    readallocation=[]
-                    for x in range(numberOfMRjobsForFile): #chooising as many readnodes as MRjobs are associated  
-                        readallocation.append(random.choice(allocation))
-                    for readnode in iter(readallocation):
-                        try:
-                            allocation.remove(readnode)
-                        except ValueError:
-                            continue
-                    chromosome[fileId,blockId] = {"filetype": filetype , "wnode":allocation,"rnode":readallocation}
-            popT.population[i]=chromosome
+                        continue
+                chromosome[fileId,blockId] = {"filetype": filetype , "wnode":allocation,"rnode":readallocation}
+        return chromosome        
+        
+    def generatePopulation(self,popT):
+        for i in range(self.populationSize):
+            popT.population[i]=self.getRandomChromosome()
             print "[Citizen generation]: Number %i generated**********************" % i
             #chr_fitness = self.calculateFitnessObjectives(chromosome,i)
             #popT.fitness[i]=chr_fitness
@@ -974,8 +1146,14 @@ class GA:
             self.plotFronts(popT,"balanceuse","network")
             self.plotFronts(popT,"balanceuse","reliability")
 
+        self.plot3DFronts(popT)
         self.plotFronts(popT,"network","reliability")
-        self.calculateCrowdingDistances(popT)
+        self.plotFronts(popT,"network","migration")
+        self.plotFronts(popT,"reliability","migration")
+        if self.Migration == 'NSGA':
+            self.calculateMigrationDistances(popT)
+        else:
+            self.calculateCrowdingDistances(popT)
 
     def tournamentSelection(self,k,popSize):
         selected = sys.maxint 
@@ -1066,7 +1244,10 @@ class GA:
         tiempo1,tiempo2 = tiempo2,time.time()
         print "Tiempo de calcular NSGA2:"+str(tiempo2-tiempo1)
         
-        self.calculateCrowdingDistances(populationRt)
+        if self.Migration == 'NSGA':
+            self.calculateMigrationDistances(populationRt)
+        else:
+            self.calculateCrowdingDistances(populationRt)
         tiempo1,tiempo2 = tiempo2,time.time()
         print "Tiempo de calcular crowding:"+str(tiempo2-tiempo1)
 
@@ -1095,7 +1276,10 @@ class GA:
         tiempo1,tiempo2 = tiempo2,time.time()
         print "Tiempo del segundo nsga2:"+str(tiempo2-tiempo1)
 
-        self.calculateCrowdingDistances(self.populationPt)
+        if self.Migration == 'NSGA':
+            self.calculateMigrationDistances(self.populationPt)
+        else:
+            self.calculateCrowdingDistances(self.populationPt)
         tiempo1,tiempo2 = tiempo2,time.time()
         print "Tiempo del segundo crowding distances:"+str(tiempo2-tiempo1)
         
@@ -1105,9 +1289,12 @@ class GA:
             self.plotFronts(self.populationPt,"balanceuse","network")
             self.plotFronts(self.populationPt,"balanceuse","reliability")
 
+        #self.plotFronts(self.populationPt,"network","reliability")
+        
+        self.plot3DFronts(self.populationPt)
         self.plotFronts(self.populationPt,"network","reliability")
-        
-        
+        self.plotFronts(self.populationPt,"network","migration")
+        self.plotFronts(self.populationPt,"reliability","migration")
 
  
         

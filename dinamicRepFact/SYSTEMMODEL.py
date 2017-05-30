@@ -9,6 +9,7 @@ import copy
 import random as random
 import math as math
 
+
 class SYSTEMMODEL:
     
     def __init__(self):
@@ -17,8 +18,13 @@ class SYSTEMMODEL:
         self.racknumber = 0 #el nodenumber ha de ser divisible por este numero
         self.nodesXrack = 0
         
+        self.migrationBetweenRacks = 10
+        self.migrationBetweenNodes = 1
+        
         self.rnd = random.Random()
         self.rnd.seed(100)
+        
+        self.initialAllocation = {}
         
 #    def normalizeConfiguration(self):
 #        for i,v in enumerate(self.serviceTupla):
