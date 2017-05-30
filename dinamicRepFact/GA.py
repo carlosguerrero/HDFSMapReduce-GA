@@ -29,7 +29,7 @@ class GA:
 #        self.racknumber = 5 #el nodenumber ha de ser divisible por este numero
 #        self.nodesXrack = self.nodenumber / self.racknumber
 
-        self.populationSize = 20
+        self.populationSize = 200
         self.populationPt = pop.POPULATION(self.populationSize)
         self.mutationProbability = 0.40
         self.HadoopRulesCreation = True
