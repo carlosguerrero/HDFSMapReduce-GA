@@ -29,41 +29,42 @@ g.HardMutation = True
 
 system.initialAllocation=g.getRandomChromosome()
 
-numberofGenerations = 5
+numberofGenerations = 200
 
-
-res = results.RESULTS()
-res.initDataCalculation()
-g.Migration = 'OBJECTIVE' # OBJECTIVE or NSGA
-g.generatePopulation(g.populationPt)
-res.idString = g.Migration
-
-
-paretoResults = []
-paretoGeneration=g.populationPt.paretoExport()
-paretoResults.append(paretoGeneration)
-
-for i in range(numberofGenerations):
+for g.Migration in ['OBJECTIVE','NSGA']:
+    res = results.RESULTS()
+    res.initDataCalculation()
+    #g.Migration = 'OBJECTIVE' # OBJECTIVE or NSGA
+    g.generatePopulation(g.populationPt)
+    res.idString = g.Migration
     
-    g.evolveNGSA2()
-    print "[Offsrping generation]: Generation number %i **********************" % i 
+    
+    paretoResults = []
     paretoGeneration=g.populationPt.paretoExport()
     paretoResults.append(paretoGeneration)
-
-res.calculateData(paretoResults,g.BalanceObjective)
-res.storeCSV(g.Migration)
-res.storeData(paretoResults)
-res.closeCSVs()
-
-res.plotparetoEvolution(paretoResults,1)
-
-dataSerie = [res.network,res.reliability,res.migration,res.nodeNumber,res.replicaNumber]
-title = ['Network','Reliability','Migration','Node number', 'Replica number']
-ylabel = ['Time units (t)','Fail rate (1/t)','Time units (t)','Node number','Replica number']
-seriesToPlot = ['mean','min','single']
-minYaxes = [0,0,0,0,0]
-
-res.plotfitEvoluation(dataSerie,title,ylabel,seriesToPlot,minYaxes)
+    
+    for i in range(numberofGenerations):
+        
+        g.evolveNGSA2()
+        res.outputLOG.write("[Offsrping generation]: Generation number "+str(i)+" **********************\n")
+        res.outputLOG.flush()
+        paretoGeneration=g.populationPt.paretoExport()
+        paretoResults.append(paretoGeneration)
+    
+    res.calculateData(paretoResults,g.BalanceObjective)
+    res.storeCSV(g.Migration)
+    res.storeData(paretoResults)
+    res.closeCSVs()
+    
+    res.plotparetoEvolution(paretoResults,1)
+    
+    dataSerie = [res.network,res.reliability,res.migration,res.nodeNumber,res.replicaNumber]
+    title = ['Network','Reliability','Migration','Node number', 'Replica number']
+    ylabel = ['Time units (t)','Fail rate (1/t)','Time units (t)','Node number','Replica number']
+    seriesToPlot = ['mean','min','single']
+    minYaxes = [0,0,0,0,0]
+    
+    res.plotfitEvoluation(dataSerie,title,ylabel,seriesToPlot,minYaxes)
 
 
     

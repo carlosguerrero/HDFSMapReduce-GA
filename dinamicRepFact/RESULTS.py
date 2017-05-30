@@ -33,6 +33,7 @@ class RESULTS:
             os.makedirs(self.file_path)
         
         self.outputCSV = open(self.file_path+'/execution_data.csv', 'wb')
+        self.outputLOG = open(self.file_path+'/log.txt', 'wb')
 
         strTitle = "config;maxbalance;minbalance;meanbalance;singlebalance;maxnetwork;minnetwork;meannetwork;singlenetwork;maxreliability;minreliability;meanreliability;singlereliability;maxmigration;minmigration;meanmigration;singlemigration;maxnodeNumber;minnodeNumber;meannodeNumber;singlenodeNumber;maxreplicaNumber;minreplicaNumber;meanreplicaNumber;singlereplicaNumber"
         self.outputCSV.write(strTitle)
@@ -52,6 +53,7 @@ class RESULTS:
 
     def closeCSVs(self):
         self.outputCSV.close()
+        self.outputLOG.close()
 
         
     def initDataCalculation(self):

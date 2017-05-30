@@ -1141,15 +1141,15 @@ class GA:
         self.calculateSolutionsWorkload(popT)
         self.calculatePopulationFitnessObjectives(popT)
         self.fastNonDominatedSort(popT)
-        if self.BalanceObjective:
-            self.plot3DFronts(popT)
-            self.plotFronts(popT,"balanceuse","network")
-            self.plotFronts(popT,"balanceuse","reliability")
-
-        self.plot3DFronts(popT)
-        self.plotFronts(popT,"network","reliability")
-        self.plotFronts(popT,"network","migration")
-        self.plotFronts(popT,"reliability","migration")
+#        if self.BalanceObjective:
+#            self.plot3DFronts(popT)
+#            self.plotFronts(popT,"balanceuse","network")
+#            self.plotFronts(popT,"balanceuse","reliability")
+#
+#        self.plot3DFronts(popT)
+#        self.plotFronts(popT,"network","reliability")
+#        self.plotFronts(popT,"network","migration")
+#        self.plotFronts(popT,"reliability","migration")
         if self.Migration == 'NSGA':
             self.calculateMigrationDistances(popT)
         else:
@@ -1284,17 +1284,17 @@ class GA:
         print "Tiempo del segundo crowding distances:"+str(tiempo2-tiempo1)
         
 
-        if self.BalanceObjective:
-            self.plot3DFronts(self.populationPt)
-            self.plotFronts(self.populationPt,"balanceuse","network")
-            self.plotFronts(self.populationPt,"balanceuse","reliability")
-
-        #self.plotFronts(self.populationPt,"network","reliability")
-        
-        self.plot3DFronts(self.populationPt)
-        self.plotFronts(self.populationPt,"network","reliability")
-        self.plotFronts(self.populationPt,"network","migration")
-        self.plotFronts(self.populationPt,"reliability","migration")
+#        if self.BalanceObjective:
+#            self.plot3DFronts(self.populationPt)
+#            self.plotFronts(self.populationPt,"balanceuse","network")
+#            self.plotFronts(self.populationPt,"balanceuse","reliability")
+#
+#        #self.plotFronts(self.populationPt,"network","reliability")
+#        
+#        self.plot3DFronts(self.populationPt)
+#        self.plotFronts(self.populationPt,"network","reliability")
+#        self.plotFronts(self.populationPt,"network","migration")
+#        self.plotFronts(self.populationPt,"reliability","migration")
 
  
         
