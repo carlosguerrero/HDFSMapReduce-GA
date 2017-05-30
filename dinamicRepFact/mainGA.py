@@ -17,9 +17,9 @@ import RESULTS as results
 
 #SI HAY QUE METER UN BUCLE CON DISTINTOS CASOS EMPEZARÍA AQUI
 
-n_nodes=200
+n_nodes=8
 system = systemmodel.SYSTEMMODEL()
-system.configurationB(nodes=n_nodes)
+system.configurationMORM(nodes=n_nodes)
 
 g = ga.GA(system)
 

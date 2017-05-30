@@ -750,7 +750,7 @@ class GA:
 #ReduceResourceElements          for feature in ('cpuload','hdload','hdsize','memorysize','memoryload'):
         for feature in ('cpuload','hdsize'):
             if b[feature]<a[feature]:
-                print "PEQUEÑÑÑÑÑÑÑÑOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"
+                print "PEQUEÑÑÑÑÑÑÑÑOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"+feature
                 return False
         return True
     
