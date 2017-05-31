@@ -43,20 +43,27 @@ for g.Migration in ['OBJECTIVE','NSGA']:
     paretoGeneration=g.populationPt.paretoExport()
     paretoResults.append(paretoGeneration)
     
+    res.calculateOneGenerationData(paretoGeneration,g.BalanceObjective)
+    
     for i in range(numberofGenerations):
         
         g.evolveNGSA2()
+        print("[Offsrping generation]: Generation number "+str(i)+" **********************\n")
         res.outputLOG.write("[Offsrping generation]: Generation number "+str(i)+" **********************\n")
         res.outputLOG.flush()
         paretoGeneration=g.populationPt.paretoExport()
-        paretoResults.append(paretoGeneration)
+#        paretoResults.append(paretoGeneration)
+        res.plotOneParetoEvolution(paretoGeneration,i+1)
+        res.calculateOneGenerationData(paretoGeneration,g.BalanceObjective)
     
-    res.calculateData(paretoResults,g.BalanceObjective)
+#    res.calculateAllData(paretoResults,g.BalanceObjective)
     res.storeCSV(g.Migration)
-    res.storeData(paretoResults)
+#    res.storeData(paretoResults,"allgenerations")
+    res.storeData(paretoGeneration,"lastgeneration")
+
     res.closeCSVs()
     
-    res.plotparetoEvolution(paretoResults,1)
+    #res.plotparetoEvolution(paretoResults,1)
     
     dataSerie = [res.network,res.reliability,res.migration,res.nodeNumber,res.replicaNumber]
     title = ['Network','Reliability','Migration','Node number', 'Replica number']
@@ -65,6 +72,9 @@ for g.Migration in ['OBJECTIVE','NSGA']:
     minYaxes = [0,0,0,0,0]
     
     res.plotfitEvoluation(dataSerie,title,ylabel,seriesToPlot,minYaxes)
+    
+    
+    res.storeData(dataSerie,"fitevolutions")
 
 
     

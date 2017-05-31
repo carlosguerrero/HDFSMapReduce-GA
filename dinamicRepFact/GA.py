@@ -1217,14 +1217,18 @@ class GA:
         
        
     def evolveNGSA2(self):
+ 
+        tiempo1 = time.time()
+        tiempo2 = tiempo1
+        print "Tiempo inicial:"+str(tiempo2-tiempo1)
         
         offspring = pop.POPULATION(self.populationSize)
         offspring.population = []
 
         offspring = self.evolveToOffspring()
-        tiempo1 = time.time()
-        tiempo2 = tiempo1
-        print "Tiempo inicial:"+str(tiempo2-tiempo1)
+        tiempo1,tiempo2 = tiempo2,time.time()
+        print "Tiempo de generar offspring:"+str(tiempo2-tiempo1)
+ 
         self.calculateSolutionsWorkload(offspring)
         tiempo1,tiempo2 = tiempo2,time.time()
         print "Tiempo de calcular workload:"+str(tiempo2-tiempo1)
