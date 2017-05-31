@@ -11,8 +11,8 @@ import os
 import numpy as np
 import math
 import pickle
-import matplotlib
 matplotlib.use('Agg')
+import matplotlib
 import matplotlib.pyplot as plt 
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt3d
