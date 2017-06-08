@@ -11,8 +11,8 @@ import os
 import numpy as np
 import math
 import pickle
-matplotlib.use('Agg')
 import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt 
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt3d
@@ -241,7 +241,7 @@ class RESULTS:
     
         for paretoGeneration in paretoResults:
 #TODO        
-            self.calculateOneGenerationDato(paretoGeneration,BalanceObjective)          
+            self.calculateOneGenerationData(paretoGeneration,BalanceObjective)          
              
      
     def plotOneParetoEvolution(self,paretoGeneration,generationNum):
@@ -287,7 +287,7 @@ class RESULTS:
             
             
         
-    def plotfitEvoluation(self,dataSerie,title,ylabel,seriesToPlot,minYaxes):
+    def plotfitEvolution(self,dataSerie,title,ylabel,seriesToPlot,minYaxes):
         
         font = {'size'   : 18}
 
@@ -325,8 +325,8 @@ class RESULTS:
         #upper, arriba    lower, abajo   center, centro    left, izquierda y    right, derecha
             #plt.legend()
        #    plt.show()
-       
-            plt.ylim(ymin=minYaxes[plotId])
+            if minYaxes[plotId]!= None:
+                plt.ylim(ymin=minYaxes[plotId])
        
        
             plt.grid()

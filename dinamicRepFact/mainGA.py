@@ -10,74 +10,121 @@ import GA as ga
 import random as random
 import SYSTEMMODEL as systemmodel
 import RESULTS as results
+import copy as copy
 
 
 
+for repetimos in range(10):
 
-
-#SI HAY QUE METER UN BUCLE CON DISTINTOS CASOS EMPEZARÍA AQUI
-
-n_nodes=8
-system = systemmodel.SYSTEMMODEL()
-system.configurationMORM(nodes=n_nodes)
-
-g = ga.GA(system)
-
-g.HadoopRulesCreation = True
-g.BalanceObjective = False
-g.HardMutation = True
-
-system.initialAllocation=g.getRandomChromosome()
-
-numberofGenerations = 200
-
-for g.Migration in ['OBJECTIVE','NSGA']:
-    res = results.RESULTS()
-    res.initDataCalculation()
-    #g.Migration = 'OBJECTIVE' # OBJECTIVE or NSGA
+    #SI HAY QUE METER UN BUCLE CON DISTINTOS CASOS EMPEZARÍA AQUI
+    
+    n_nodes=8
+    system = systemmodel.SYSTEMMODEL()
+    system.configurationMORM(nodes=n_nodes)
+    
+    g = ga.GA(system)
+    
+    g.HadoopRulesCreation = True
+    g.BalanceObjective = False
+    g.HardMutation = True
+    
+    system.initialAllocation=g.getRandomChromosome()
+    
+    
     g.generatePopulation(g.populationPt)
-    res.idString = g.Migration
     
     
-    paretoResults = []
-    paretoGeneration=g.populationPt.paretoExport()
-    paretoResults.append(paretoGeneration)
     
-    res.calculateOneGenerationData(paretoGeneration,g.BalanceObjective)
+    startingpopulation = copy.deepcopy(g.populationPt.population)
+    startingfitness = copy.deepcopy(g.populationPt.fitness)
+    startingdominatesTo = copy.deepcopy(g.populationPt.dominatesTo)
+    startingdominatedBy = copy.deepcopy(g.populationPt.dominatedBy)
+    startingfronts = copy.deepcopy(g.populationPt.fronts)
+    startingcrowdingDistances = copy.deepcopy(g.populationPt.crowdingDistances)
+    startingnodesUsages = copy.deepcopy(g.populationPt.nodesUsages)
     
-    for i in range(numberofGenerations):
+    numberofGenerations = 50
+    
+    
+    configuration = []
+    configuration.append(['OBJECTIVE','DYNAMIC','OURNET'])
+    configuration.append(['OBJECTIVE','STATIC','OURNET'])
+    configuration.append(['OBJECTIVE','DYNAMIC','BADNET'])
+    configuration.append(['OBJECTIVE','STATIC','BADNET'])
+    
+    
+    #for g.Migration in ['OBJECTIVE','NSGA']:
+    #for g.Migration in ['OBJECTIVE']:
+    #    for g.replicaFactor in ['DYNAMIC', 'STATIC']:
+    #        for g.networkType in ['OURNET', 'BADNET']:
+    #        for g.networkType in ['OURNET', 'BADNET']:
+    
+    for repetition in configuration:            
+                
+        g.Migration = repetition[0]
+        g.replicaFactor = repetition[1]
+        g.networkType = repetition[2]
         
-        g.evolveNGSA2()
-        print("[Offsrping generation]: Generation number "+str(i)+" **********************\n")
-        res.outputLOG.write("[Offsrping generation]: Generation number "+str(i)+" **********************\n")
-        res.outputLOG.flush()
+        res = results.RESULTS()
+        res.initDataCalculation()
+        #g.Migration = 'OBJECTIVE' # OBJECTIVE or NSGA
+        
+        res.idString = g.Migration + g.replicaFactor + g.networkType
+    
+        g.populationPt.population = copy.deepcopy(startingpopulation)
+        g.populationPt.fitness = copy.deepcopy(startingfitness)
+        g.populationPt.dominatesTo = copy.deepcopy(startingdominatesTo)
+        g.populationPt.dominatedBy = copy.deepcopy(startingdominatedBy)
+        g.populationPt.fronts = copy.deepcopy(startingfronts)
+        g.populationPt.crowdingDistances = copy.deepcopy(startingcrowdingDistances)
+        g.populationPt.nodesUsages = copy.deepcopy(startingnodesUsages)            
+        
+        if g.networkType == 'BADNET':
+            g.calculateSolutionsWorkload(g.populationPt)
+            g.calculatePopulationFitnessObjectives(g.populationPt)
+            g.fastNonDominatedSort(g.populationPt)
+    
+            
+        
+        paretoResults = []
         paretoGeneration=g.populationPt.paretoExport()
-#        paretoResults.append(paretoGeneration)
-        res.plotOneParetoEvolution(paretoGeneration,i+1)
+        paretoResults.append(paretoGeneration)
+        
         res.calculateOneGenerationData(paretoGeneration,g.BalanceObjective)
+        
+        for i in range(numberofGenerations):
+            
+            g.evolveNGSA2()
+            print("[Offsrping generation]: Generation number "+str(i)+" **********************\n")
+            res.outputLOG.write("[Offsrping generation]: Generation number "+str(i)+" **********************\n")
+            res.outputLOG.flush()
+            paretoGeneration=g.populationPt.paretoExport()
+    #        paretoResults.append(paretoGeneration)
+            res.plotOneParetoEvolution(paretoGeneration,i+1)
+            res.calculateOneGenerationData(paretoGeneration,g.BalanceObjective)
+        
+    #    res.calculateAllData(paretoResults,g.BalanceObjective)
+        res.storeCSV(g.Migration+'.'+g.replicaFactor + '.' + g.networkType)
+    #    res.storeData(paretoResults,"allgenerations")
+        res.storeData(paretoGeneration,"lastgeneration")
     
-#    res.calculateAllData(paretoResults,g.BalanceObjective)
-    res.storeCSV(g.Migration)
-#    res.storeData(paretoResults,"allgenerations")
-    res.storeData(paretoGeneration,"lastgeneration")
-
-    res.closeCSVs()
-    
-    #res.plotparetoEvolution(paretoResults,1)
-    
-    dataSerie = [res.network,res.reliability,res.migration,res.nodeNumber,res.replicaNumber]
-    title = ['Network','Reliability','Migration','Node number', 'Replica number']
-    ylabel = ['Time units (t)','Fail rate (1/t)','Time units (t)','Node number','Replica number']
-    seriesToPlot = ['mean','min','single']
-    minYaxes = [0,0,0,0,0]
-    
-    res.plotfitEvoluation(dataSerie,title,ylabel,seriesToPlot,minYaxes)
+        res.closeCSVs()
+        
+     #   res.plotparetoEvolution(paretoResults,1)
+        
+        dataSerie = [res.network,res.reliability,res.migration,res.nodeNumber,res.replicaNumber]
+        title = ['Network','Reliability','Migration','Node number', 'Replica number']
+        ylabel = ['Time units (t)','Fail rate (1/t)','Time units (t)','Node number','Replica number']
+        seriesToPlot = ['mean','min','single']
+        minYaxes = [None,None,None,None,None]
+        
+        res.plotfitEvolution(dataSerie,title,ylabel,seriesToPlot,minYaxes)
+        
+        
+        res.storeData(dataSerie,"fitevolutions")
     
     
-    res.storeData(dataSerie,"fitevolutions")
-
-
-    
+        
 
 
 #mutate(g.population[2])

@@ -178,7 +178,7 @@ class SYSTEMMODEL:
             self.FilesPerOutputFiles[fitem['output']] = {"input" : key[1], "temp": fitem['temp']}
 
 
-
+        self.inputFiles = set()
         self.tempFiles = set()
         self.outputFiles = set()
         
@@ -195,6 +195,7 @@ class SYSTEMMODEL:
                 self.InputFilesPerMRJob[mrKey].append(fileKey)
             except KeyError:
                 self.InputFilesPerMRJob[mrKey] = [fileKey]
+            self.inputFiles.add(fileKey)
             self.tempFiles.add(self.MapReduceFiles[(mrKey,fileKey)]['temp'])
             self.outputFiles.add(self.MapReduceFiles[(mrKey,fileKey)]['output'])
             self.MRjobsPerOutTempFile[self.MapReduceFiles[(mrKey,fileKey)]['temp']] = mrKey
@@ -396,7 +397,7 @@ class SYSTEMMODEL:
             self.FilesPerOutputFiles[fitem['output']] = {"input" : key[1], "temp": fitem['temp']}
 
 
-
+        self.inputFiles = set()
         self.tempFiles = set()
         self.outputFiles = set()
         
@@ -413,6 +414,7 @@ class SYSTEMMODEL:
                 self.InputFilesPerMRJob[mrKey].append(fileKey)
             except KeyError:
                 self.InputFilesPerMRJob[mrKey] = [fileKey]
+            self.inputFiles.add(fileKey)
             self.tempFiles.add(self.MapReduceFiles[(mrKey,fileKey)]['temp'])
             self.outputFiles.add(self.MapReduceFiles[(mrKey,fileKey)]['output'])
             self.MRjobsPerOutTempFile[self.MapReduceFiles[(mrKey,fileKey)]['temp']] = mrKey
@@ -614,7 +616,7 @@ class SYSTEMMODEL:
             self.FilesPerOutputFiles[fitem['output']] = {"input" : key[1], "temp": fitem['temp']}
 
 
-
+        self.inputFiles = set()
         self.tempFiles = set()
         self.outputFiles = set()
         
@@ -631,6 +633,7 @@ class SYSTEMMODEL:
                 self.InputFilesPerMRJob[mrKey].append(fileKey)
             except KeyError:
                 self.InputFilesPerMRJob[mrKey] = [fileKey]
+            self.inputFiles.add(fileKey)
             self.tempFiles.add(self.MapReduceFiles[(mrKey,fileKey)]['temp'])
             self.outputFiles.add(self.MapReduceFiles[(mrKey,fileKey)]['output'])
             self.MRjobsPerOutTempFile[self.MapReduceFiles[(mrKey,fileKey)]['temp']] = mrKey

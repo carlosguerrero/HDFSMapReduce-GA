@@ -36,6 +36,8 @@ class GA:
         self.BalanceObjective = True
         self.HardMutation = False
         self.Migration = 'OBJECTIVE'  # OBJECTIVE or NSGA
+        self.replicaFactor = 'DYNAMIC' #DYNAMIC STATIC
+        self.networkType = 'OURNET' #OUR BADNET
 
 
 
@@ -54,19 +56,29 @@ class GA:
             numReadBlocks = len(placement['rnode'])
             numWriteBlocks = len(placement['wnode'])
 
-            mutationOperators = [] 
-            if numReadBlocks>1:
-                mutationOperators.append(self.swapTwoSchedulleMutation)
-            if numWriteBlocks>0 and numReadBlocks>0:
-                mutationOperators.append(self.swapBlockSchedulleMutation)
-            if numReadBlocks>0:
-                mutationOperators.append(self.changeSchedulleMutation)
-            if numWriteBlocks>0:
-                mutationOperators.append(self.changeBlockMutation)
-            mutationOperators.append(self.addBlockMutation)
-            if numWriteBlocks>0:
-                mutationOperators.append(self.delBlockMutation)
-            
+            mutationOperators = []
+            if self.replicaFactor == "DYNAMIC":
+                if numReadBlocks>1:
+                    mutationOperators.append(self.swapTwoSchedulleMutation)
+                if numWriteBlocks>0 and numReadBlocks>0:
+                    mutationOperators.append(self.swapBlockSchedulleMutation)
+                if numReadBlocks>0:
+                    mutationOperators.append(self.changeSchedulleMutation)
+                if numWriteBlocks>0:
+                    mutationOperators.append(self.changeBlockMutation)
+                mutationOperators.append(self.addBlockMutation)
+                if numWriteBlocks>0:
+                    mutationOperators.append(self.delBlockMutation)
+            if self.replicaFactor == "STATIC":            
+                if numReadBlocks>1:
+                    mutationOperators.append(self.swapTwoSchedulleMutation)
+                if numWriteBlocks>0 and numReadBlocks>0:
+                    mutationOperators.append(self.swapBlockSchedulleMutation)
+                if numReadBlocks>0:
+                    mutationOperators.append(self.changeSchedulleMutation)
+                if numWriteBlocks>0:
+                    mutationOperators.append(self.changeBlockMutation)
+                
             mutationOperators[random.randint(0,len(mutationOperators)-1)](placement)
 
 
@@ -583,7 +595,45 @@ class GA:
                     networkLoad = networkLoad +  self.distanceBetweenNodes(i,j) * self.system.MRusage[MRjob]['probability'] * self.system.MRusage[MRjob]['networkload'] 
         #print "Tiempo de cálculo de sumar matriz:"+str(inicio - time.time())
         return networkLoad
+ 
+    def magicCalculateNetworkLoadFORFILES(self,solution):
+        allFiles = self.system.inputFiles | self.system.tempFiles | self.system.outputFiles
         
+        totalComputation = 0.0
+        
+        for file in allFiles:
+            
+            magicFilesStructure = copy.deepcopy(self.system.MagicFiles)
+            #inicio = time.time()
+            for key in solution:
+                if key[0]==file:
+                    if solution[key]['filetype']=='input':
+                        inputId=key[0]
+                        for mrId in self.system.MRjobsPerInputFile[inputId]:
+                            tempId=self.system.MapReduceFiles[(mrId,inputId)]['temp']
+                            outputId=self.system.MapReduceFiles[(mrId,inputId)]['output']
+                            magicFilesStructure[(inputId,tempId,outputId)]['readInput'] += solution[key]['rnode']
+                        #tengo que añadir los bloques en todos los que usan este inputID, por tanto he de buscar (*,inputId)
+                    elif solution[key]['filetype']=='temp':
+                        tempId=key[0]
+                        inputId = self.system.FilesPerTempFiles[tempId]['input']
+                        outputId = self.system.FilesPerTempFiles[tempId]['output']
+                        magicFilesStructure[(inputId,tempId,outputId)]['readTemp'] += solution[key]['rnode']
+                        magicFilesStructure[(inputId,tempId,outputId)]['writeTemp'] += solution[key]['rnode'] + solution[key]['wnode']
+        
+                    elif solution[key]['filetype']=='output':
+                        outputId=key[0]
+                        inputId = self.system.FilesPerOutputFiles[outputId]['input']
+                        tempId = self.system.FilesPerOutputFiles[outputId]['temp']
+                        magicFilesStructure[(inputId,tempId,outputId)]['writeOutput'] += solution[key]['rnode'] + solution[key]['wnode']
+                #print "Tiempo de generación matriz:"+str(inicio - time.time())
+       
+            totalComputation += self.computeMagicStructure(magicFilesStructure)
+        
+        return totalComputation
+    
+        
+ 
         
     def magicCalculateNetworkLoad(self,solution):
         magicFilesStructure = copy.deepcopy(self.system.MagicFiles)
@@ -614,6 +664,35 @@ class GA:
 #******************************************************************************************
 #   END NetworkLoad calculation
 #******************************************************************************************
+
+
+
+    def calculateBadNetworkLoad(self,solution):
+        magicFilesStructure = copy.deepcopy(self.system.MagicFiles)
+        #inicio = time.time()
+        for key in solution:
+            if solution[key]['filetype']=='input':
+                inputId=key[0]
+                for mrId in self.system.MRjobsPerInputFile[inputId]:
+                    tempId=self.system.MapReduceFiles[(mrId,inputId)]['temp']
+                    outputId=self.system.MapReduceFiles[(mrId,inputId)]['output']
+                    magicFilesStructure[(inputId,tempId,outputId)]['readInput'] += solution[key]['rnode'] + solution[key]['wnode']
+                #tengo que añadir los bloques en todos los que usan este inputID, por tanto he de buscar (*,inputId)
+            elif solution[key]['filetype']=='temp':
+                tempId=key[0]
+                inputId = self.system.FilesPerTempFiles[tempId]['input']
+                outputId = self.system.FilesPerTempFiles[tempId]['output']
+                magicFilesStructure[(inputId,tempId,outputId)]['readTemp'] += solution[key]['rnode'] + solution[key]['wnode']
+                magicFilesStructure[(inputId,tempId,outputId)]['writeTemp'] += solution[key]['rnode'] + solution[key]['wnode']
+
+            elif solution[key]['filetype']=='output':
+                outputId=key[0]
+                inputId = self.system.FilesPerOutputFiles[outputId]['input']
+                tempId = self.system.FilesPerOutputFiles[outputId]['temp']
+                magicFilesStructure[(inputId,tempId,outputId)]['writeOutput'] += solution[key]['rnode'] + solution[key]['wnode']
+        #print "Tiempo de generación matriz:"+str(inicio - time.time())
+        
+        return self.computeMagicStructure(magicFilesStructure)
 
 
 #******************************************************************************************
@@ -796,6 +875,8 @@ class GA:
             chr_fitness["network"] = self.magicCalculateNetworkLoad(chromosome)
             #chr_fitness["network"] = 1.0
             chr_fitness["reliability"] = self.calculateFailure(chromosome)
+            if self.networkType == 'BADNET':
+                chr_fitness["networkbad"] = self.calculateBadNetworkLoad(chromosome)
             chr_fitness["migration"] = self.calculateMigrationCost(chromosome,self.system.initialAllocation)
             #chr_fitness["nodenumber"] = self.calculateNodeNumber(chromosome)
             if self.BalanceObjective:
@@ -805,6 +886,9 @@ class GA:
             chr_fitness["network"] = float('inf')
             chr_fitness["reliability"] = float('inf')
             chr_fitness["migration"] = float('inf')
+            if self.networkType == 'BADNET':
+                chr_fitness["networkbad"] = float('inf')
+                
             #chr_fitness["nodenumber"] = float('inf')
             if self.BalanceObjective:
                 chr_fitness["balanceuse"] = float('inf')
@@ -841,9 +925,10 @@ class GA:
         for key in a:
             if key!="index":  #por ese motivo está este if.
                 if key!="migration" or self.Migration!="NSGA":
-                    if b[key]<=a[key]:
-                        Adominates = False
-                        break
+                    if key!="network" or self.Migration!="BADNET":
+                        if b[key]<=a[key]:
+                            Adominates = False
+                            break
         return Adominates        
 
         
@@ -880,7 +965,7 @@ class GA:
     def calculateMigrationDistances(self,popT):
         
         for i in range(len(popT.fitness)):
-            popT.crowdingDistances[i]=popT.fitness[i]['migration']
+            popT.crowMdingDistances[i]=popT.fitness[i]['migration']
         
         
     def calculateDominants(self,popT):
