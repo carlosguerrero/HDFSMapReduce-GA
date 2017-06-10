@@ -14,11 +14,11 @@ import copy as copy
 
 
 
-for repetimos in range(10):
+for n_nodes in [8,16,32]:
 
     #SI HAY QUE METER UN BUCLE CON DISTINTOS CASOS EMPEZARÍA AQUI
     
-    n_nodes=8
+    #n_nodes=8 #DEBE DE SER DIVISIBLE POR 4 (numero racks) Y POR 8 tipos de máquinas
     system = systemmodel.SYSTEMMODEL()
     system.configurationMORM(nodes=n_nodes)
     
@@ -70,7 +70,7 @@ for repetimos in range(10):
         res.initDataCalculation()
         #g.Migration = 'OBJECTIVE' # OBJECTIVE or NSGA
         
-        res.idString = g.Migration + g.replicaFactor + g.networkType
+        res.idString = str(n_nodes) + g.Migration + g.replicaFactor + g.networkType
     
         g.populationPt.population = copy.deepcopy(startingpopulation)
         g.populationPt.fitness = copy.deepcopy(startingfitness)
@@ -105,7 +105,7 @@ for repetimos in range(10):
             res.calculateOneGenerationData(paretoGeneration,g.BalanceObjective)
         
     #    res.calculateAllData(paretoResults,g.BalanceObjective)
-        res.storeCSV(g.Migration+'.'+g.replicaFactor + '.' + g.networkType)
+        res.storeCSV(str(n_nodes) + g.Migration+'.'+g.replicaFactor + '.' + g.networkType)
     #    res.storeData(paretoResults,"allgenerations")
         res.storeData(paretoGeneration,"lastgeneration")
     

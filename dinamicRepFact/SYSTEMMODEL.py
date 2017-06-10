@@ -438,7 +438,7 @@ class SYSTEMMODEL:
         
     def configurationMORM(self,nodes):
         
-        nodenumber=8
+        nodenumber=nodes
         racknumber=4
         
         
@@ -521,7 +521,8 @@ class SYSTEMMODEL:
         self.nodeFeatures = []
 
         for n in range(0,8):
-            self.nodeFeatures.append(self.plantillasMaquinas[n])
+            for mm in range(self.nodenumber/len(self.plantillasMaquinas)):
+                self.nodeFeatures.append(self.plantillasMaquinas[n])
     
 
         self.rackFeatures = []
