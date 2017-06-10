@@ -27,6 +27,7 @@ for repetimos in range(10):
     g.HadoopRulesCreation = True
     g.BalanceObjective = False
     g.HardMutation = True
+    g.AveregaObjectives = True
     
     system.initialAllocation=g.getRandomChromosome()
     

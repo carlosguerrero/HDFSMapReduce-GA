@@ -38,6 +38,7 @@ class GA:
         self.Migration = 'OBJECTIVE'  # OBJECTIVE or NSGA
         self.replicaFactor = 'DYNAMIC' #DYNAMIC STATIC
         self.networkType = 'OURNET' #OUR BADNET
+        self.AveregaObjectives = True
 
 
 
@@ -393,6 +394,14 @@ class GA:
         return len(allNodes)
 
 
+    def calculateChunkReplicaNumber(self, solution):
+        mylen=0
+        for i in solution:
+            mylen += len(set(solution[i]['rnode']+solution[i]['wnode']))
+        return mylen
+  
+        
+        
 #******************************************************************************************
 #   END nodenumber calculation
 #******************************************************************************************
@@ -870,14 +879,19 @@ class GA:
         chromosome=pop.population[index]
         nodeLoads= pop.nodesUsages[index]
 
+
+        if self.AveregaObjectives == True:
+            replicaNumber = self.calculateChunkReplicaNumber(chromosome)
+        else:
+            replicaNumber = 1.0
         
         if self.checkConstraints(pop,index):
-            chr_fitness["network"] = self.magicCalculateNetworkLoad(chromosome)
+            chr_fitness["network"] = self.magicCalculateNetworkLoad(chromosome)/replicaNumber
             #chr_fitness["network"] = 1.0
             chr_fitness["reliability"] = self.calculateFailure(chromosome)
             if self.networkType == 'BADNET':
-                chr_fitness["networkbad"] = self.calculateBadNetworkLoad(chromosome)
-            chr_fitness["migration"] = self.calculateMigrationCost(chromosome,self.system.initialAllocation)
+                chr_fitness["networkbad"] = self.calculateBadNetworkLoad(chromosome)/replicaNumber
+            chr_fitness["migration"] = self.calculateMigrationCost(chromosome,self.system.initialAllocation)/replicaNumber
             #chr_fitness["nodenumber"] = self.calculateNodeNumber(chromosome)
             if self.BalanceObjective:
                 chr_fitness["balanceuse"] = self.calculateClusterBalanceUse(nodeLoads)

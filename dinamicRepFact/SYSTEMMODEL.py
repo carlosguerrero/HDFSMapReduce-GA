@@ -503,14 +503,14 @@ class SYSTEMMODEL:
 #        self.plantillasMaquinas.append({"name": "small", "cpuload" : 2.0, "hdsize": 4000.0, "failrate": 0.005})
 #        self.plantillasMaquinas.append({"name": "big", "cpuload" : 8.0, "hdsize": 8000.0, "failrate": 0.015})
 
-        self.plantillasMaquinas.append({"name": "p1", "cpuload" : 1.0, "hdsize": 500.0, "failrate": 0.001})
-        self.plantillasMaquinas.append({"name": "p2", "cpuload" : 2.0, "hdsize": 500.0, "failrate": 0.005})
-        self.plantillasMaquinas.append({"name": "p3", "cpuload" : 8.0, "hdsize": 100.0, "failrate": 0.001})
-        self.plantillasMaquinas.append({"name": "p4", "cpuload" : 8.0, "hdsize": 240.0, "failrate": 0.002})
-        self.plantillasMaquinas.append({"name": "p5", "cpuload" : 8.0, "hdsize": 250.0, "failrate": 0.015})
-        self.plantillasMaquinas.append({"name": "p6", "cpuload" : 8.0, "hdsize": 160.0, "failrate": 0.012})
-        self.plantillasMaquinas.append({"name": "p7", "cpuload" : 8.0, "hdsize": 128.0, "failrate": 0.004})
-        self.plantillasMaquinas.append({"name": "p8", "cpuload" : 8.0, "hdsize": 146.0, "failrate": 0.007})
+        self.plantillasMaquinas.append({"name": "p1", "cpuload" : 8.0, "hdsize": 500.0, "failrate": 0.001})
+        self.plantillasMaquinas.append({"name": "p2", "cpuload" : 4.0, "hdsize": 500.0, "failrate": 0.005})
+        self.plantillasMaquinas.append({"name": "p3", "cpuload" : 1.0, "hdsize": 100.0, "failrate": 0.001})
+        self.plantillasMaquinas.append({"name": "p4", "cpuload" : 2.0, "hdsize": 240.0, "failrate": 0.002})
+        self.plantillasMaquinas.append({"name": "p5", "cpuload" : 2.0, "hdsize": 250.0, "failrate": 0.015})
+        self.plantillasMaquinas.append({"name": "p6", "cpuload" : 2.0, "hdsize": 160.0, "failrate": 0.012})
+        self.plantillasMaquinas.append({"name": "p7", "cpuload" : 1.0, "hdsize": 128.0, "failrate": 0.004})
+        self.plantillasMaquinas.append({"name": "p8", "cpuload" : 1.0, "hdsize": 146.0, "failrate": 0.007})
 
         #transformamos el tamaño del HD de las plantillas que está indicado en GB a bloques
         for i in range(len(self.plantillasMaquinas)):
