@@ -209,7 +209,7 @@ class RESULTS:
                 if (migDiff) > 0:
                     migValue = ((x['migration']-mmin)/(migDiff))*(1.0/myWeight)
                 else:
-                    relValue = 1.0*(1.0/myWeight)                    
+                    migValue = 1.0*(1.0/myWeight)                    
                 if BalanceObjective:
                     seqfit.append(balValue+netValue+relValue+migValue)
                 else:
