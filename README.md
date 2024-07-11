@@ -1,6 +1,6 @@
 # Migration-Aware Genetic Optimization for MapReduce Scheduling and Replica Placement in Hadoop
 
-This program has been implemented for the research presented in the article "Migration-Aware Genetic Optimization for MapReduce Scheduling and Replica Placement in Hadoop", accepted for publication in the "Journal of Grid Computing"l.
+This program has been implemented for the research presented in the article "Migration-Aware Genetic Optimization for MapReduce Scheduling and Replica Placement in Hadoop", accepted for publication in the "Journal of Grid Computing".
 
 
 This a NSGA-II algorithm implementation in python 2.7, considering the GA settings explained in the article. For more details, please, read the article in https://doi.org/10.1007/s10723-018-9432-8
